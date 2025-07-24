@@ -20,6 +20,7 @@ ANALYSIS_TABLE = os.environ["PROPERTY_ANALYSIS_TABLE"]
 CACHE_BUCKET = os.environ["GEOSPATIAL_CACHE_BUCKET"]
 EVENTBRIDGE_BUS = os.environ["EVENTBRIDGE_BUS_NAME"]
 
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Process geospatial analysis for properties"""
 
@@ -57,6 +58,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         logger.error(f"Error processing analysis: {str(e)}")
         return {"statusCode": 500, "body": str(e)}
 
+
 def perform_geospatial_analysis(coordinates: list) -> Dict[str, Any]:
     """Perform geospatial analysis"""
 
@@ -76,6 +78,7 @@ def perform_geospatial_analysis(coordinates: list) -> Dict[str, Any]:
         logger.error(f"Error in geospatial analysis: {str(e)}")
         return {"error": str(e)}
 
+
 def get_elevation_data(coordinates: list) -> Dict[str, float]:
     """Get elevation data (mock)"""
     center_lat = sum(coord[1] for coord in coordinates[:-1]) / (len(coordinates) - 1)
@@ -83,6 +86,7 @@ def get_elevation_data(coordinates: list) -> Dict[str, float]:
 
     # Mock elevation data
     return {"avg_elevation": 850.5, "min_elevation": 820.0, "max_elevation": 890.0}
+
 
 def get_vegetation_index(coordinates: list) -> Dict[str, float]:
     """Calculate NDVI (mock)"""
@@ -92,13 +96,16 @@ def get_vegetation_index(coordinates: list) -> Dict[str, float]:
         "classification": "moderate_vegetation",
     }
 
+
 def calculate_slope(coordinates: list) -> Dict[str, float]:
     """Calculate terrain slope (mock)"""
     return {"avg_slope": 5.2, "max_slope": 15.8, "slope_classification": "gentle"}
 
+
 def find_nearest_water(coordinates: list) -> float:
     """Find distance to nearest water body (mock)"""
     return 450.0  # meters
+
 
 def get_weather_data(coordinates: list) -> Dict[str, Any]:
     """Get weather/climate data (mock)"""
@@ -107,6 +114,7 @@ def get_weather_data(coordinates: list) -> Dict[str, Any]:
         "avg_temperature": 22.5,
         "climate_zone": "tropical_highland",
     }
+
 
 def update_analysis_status(property_id: str, status: str):
     """Update analysis status in DynamoDB"""
@@ -120,6 +128,7 @@ def update_analysis_status(property_id: str, status: str):
             "updatedAt": datetime.now(timezone.utc).isoformat(),
         }
     )
+
 
 def save_analysis_results(property_id: str, results: Dict[str, Any]):
     """Save analysis results to DynamoDB"""
@@ -146,6 +155,7 @@ def save_analysis_results(property_id: str, results: Dict[str, Any]):
             ":completed": datetime.now(timezone.utc).isoformat(),
         },
     )
+
 
 def publish_analysis_complete(property_id: str):
     """Publish analysis completion event"""
