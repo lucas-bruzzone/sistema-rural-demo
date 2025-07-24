@@ -59,14 +59,14 @@ jobs:
         filters: |
           infrastructure:
             - 'sistema-rural/1.infrastructure/**'
+          lambda-authorizer:
+            - 'sistema-rural/2.lambda-authorizer/**'
           lambda-crud:
             - 'sistema-rural/lambda-crud/**'
           lambda-analysis-infra:
             - 'sistema-rural/lambda-analysis/infrastructure/**'
           lambda-analysis-lambda:
             - 'sistema-rural/lambda-analysis/lambda/**'
-          lambda-authorizer:
-            - 'sistema-rural/lambda-authorizer/**'
           api-gateway:
             - 'sistema-rural/api-gateway/**'
           websocket:
@@ -138,7 +138,7 @@ jobs:
 
     - name: Terraform Lambda Authorizer
       run: |
-        cd sistema-rural/lambda-authorizer/terraform
+        cd sistema-rural/2.lambda-authorizer/terraform
         terraform init
         terraform validate
         terraform plan -var-file="../../infrastructure/tfvars/devops.tfvars" -no-color
