@@ -254,7 +254,7 @@ jobs:
 
     - name: Terraform Lambda Analysis Function
       run: |
-        cd sistema-rural/5.lambda-analysisterraform
+        cd sistema-rural/5.lambda-analysis/terraform
         terraform init
         terraform validate
         terraform plan -var-file="tfvars/devops.tfvars" -no-color
