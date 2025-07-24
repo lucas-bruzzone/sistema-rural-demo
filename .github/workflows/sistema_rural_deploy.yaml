@@ -68,7 +68,7 @@ jobs:
           lambda-analysis-lambda:
             - 'sistema-rural/5.lambda-analysis/**'
           api-gateway:
-            - 'sistema-rural/api-gateway/**'
+            - 'sistema-rural/6.api-gateway/**'
           websocket:
             - 'sistema-rural/websocket/**'
           frontend:
@@ -289,13 +289,13 @@ jobs:
 
     - name: Terraform API Gateway
       run: |
-        cd sistema-rural/api-gateway
+        cd sistema-rural/6.api-gateway
         terraform init
         terraform validate
-        terraform plan -var-file="../infrastructure/tfvars/devops.tfvars" -no-color
+        terraform plan -var-file="tfvars/devops.tfvars" -no-color
         
         if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
-          terraform apply -var-file="../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+          terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
   # 7. WebSocket
