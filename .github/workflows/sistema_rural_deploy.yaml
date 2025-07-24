@@ -336,7 +336,7 @@ jobs:
 
     - name: Terraform Lambda Handle WebSocket
       run: |
-        cd sistema-rural/8.lambda-handle-websocket/terraform
+        cd sistema-rural/7.lambda-handle-websocket/terraform
         terraform init
         terraform validate
         terraform plan -var-file="tfvars/devops.tfvars" -no-color
@@ -371,7 +371,7 @@ jobs:
 
     - name: Terraform WebSocket Infrastructure
       run: |
-        cd sistema-rural/7.websocket-infrastructure
+        cd sistema-rural/8.websocket-infrastructure
         terraform init
         terraform validate
         terraform plan -var-file="tfvars/devops.tfvars" -no-color
