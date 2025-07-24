@@ -9,7 +9,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "sistema-rural-terraform-state"
+    bucket = "example-aws-terraform-terraform-state"
     key    = "frontend/terraform.tfstate"
     region = "us-east-1"
   }

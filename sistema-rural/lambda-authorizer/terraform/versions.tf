@@ -1,9 +1,9 @@
 terraform {
   backend "s3" {
-    bucket         = "sistema-rural-terraform-state"
+    bucket         = "example-aws-terraform-terraform-state"
     key            = "lambda-authorizer/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "sistema-rural-terraform-lock"
+    dynamodb_table = "example-aws-terraform-terraform-lock"
     encrypt        = true
   }
 

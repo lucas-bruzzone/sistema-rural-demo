@@ -1,7 +1,7 @@
 data "terraform_remote_state" "infrastructure" {
   backend = "s3"
   config = {
-    bucket = "sistema-rural-terraform-state"
+    bucket = "example-aws-terraform-terraform-state"
     key    = "infrastructure/terraform.tfstate"
     region = "us-east-1"
   }
@@ -10,7 +10,7 @@ data "terraform_remote_state" "infrastructure" {
 data "terraform_remote_state" "lambda_crud" {
   backend = "s3"
   config = {
-    bucket = "sistema-rural-terraform-state"
+    bucket = "example-aws-terraform-terraform-state"
     key    = "lambda-crud/terraform.tfstate"
     region = "us-east-1"
   }
