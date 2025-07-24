@@ -7,13 +7,6 @@ resource "aws_apigatewayv2_api" "websocket" {
   protocol_type              = "WEBSOCKET"
   route_selection_expression = "$request.body.action"
 
-  cors_configuration {
-    allow_credentials = true
-    allow_origins     = ["https://${var.frontend_domain}", "http://localhost:3000"]
-    allow_methods     = ["*"]
-    allow_headers     = ["*"]
-  }
-
   tags = var.default_tags
 }
 
