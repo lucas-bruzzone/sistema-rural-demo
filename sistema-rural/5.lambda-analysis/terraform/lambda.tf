@@ -7,7 +7,7 @@ module "lambda_geospatial" {
   layers        = [module.lambda_geospatial_layer.lambda_layer_arn]
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.11"
-  timeout       = 300 # 5 minutes
+  timeout       = 120 # 5 minutes
   memory_size   = 512
 
   create_role = false
