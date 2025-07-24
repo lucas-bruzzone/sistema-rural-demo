@@ -1,5 +1,13 @@
 // Simplified Map Controller with Satellite Support
-const PROPERTIES_API_URL = 'https://nfvbev7jgc.execute-api.us-east-1.amazonaws.com/devops/properties';
+const getApiUrl = () => {
+    if (window.SISTEMA_RURAL_CONFIG) {
+        return `${window.SISTEMA_RURAL_CONFIG.API_BASE_URL}/properties`;
+    }
+    // Fallback para desenvolvimento
+    return 'https://nfvbev7jgc.execute-api.us-east-1.amazonaws.com/devops/properties';
+};
+
+const PROPERTIES_API_URL = getApiUrl();
 
 let map;
 let drawnItems;

@@ -203,3 +203,30 @@ locals {
     ".woff2" = "font/woff2"
   }
 }
+
+# Adicionar no main.tf do frontend
+
+# Template do arquivo de configuração
+resource "local_file" "config_js" {
+  content = templatefile("${path.module}/config.js.tpl", {
+    api_gateway_url       = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
+    cognito_region        = data.terraform_remote_state.infrastructure.outputs.cognito_region
+    cognito_user_pool_id  = data.terraform_remote_state.infrastructure.outputs.cognito_user_pool_id
+    cognito_client_id     = data.terraform_remote_state.infrastructure.outputs.cognito_client_id
+    cognito_domain        = "${data.terraform_remote_state.infrastructure.outputs.cognito_domain}.auth.${data.terraform_remote_state.infrastructure.outputs.cognito_region}.amazoncognito.com"
+    websocket_url         = data.terraform_remote_state.websocket.outputs.websocket_stage_url
+    environment           = var.environment
+  })
+  filename = "${path.module}/src/js/config.js"
+}
+
+# Upload do config.js para S3
+resource "aws_s3_object" "config_js" {
+  bucket       = aws_s3_bucket.frontend.id
+  key          = "js/config.js"
+  source       = local_file.config_js.filename
+  etag         = local_file.config_js.content_md5
+  content_type = "application/javascript"
+
+  depends_on = [local_file.config_js]
+}

@@ -208,6 +208,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/components.js"></script>
     <script src="js/main.js"></script>
@@ -217,7 +218,25 @@
             constructor() {
                 this.properties = [];
                 this.selectedProperties = new Set();
+                this.apiBaseUrl = this.getApiUrl();
+                this.websocketUrl = this.getWebSocketUrl();
                 this.init();
+            }
+
+            getApiUrl() {
+                if (window.SISTEMA_RURAL_CONFIG) {
+                    return window.SISTEMA_RURAL_CONFIG.API_BASE_URL;
+                }
+                // Fallback para desenvolvimento
+                return 'https://nfvbev7jgc.execute-api.us-east-1.amazonaws.com/devops';
+            }
+
+            getWebSocketUrl() {
+                if (window.SISTEMA_RURAL_CONFIG) {
+                    return window.SISTEMA_RURAL_CONFIG.WEBSOCKET_URL;
+                }
+                // Fallback para desenvolvimento
+                return 'wss://5lsoua3trg.execute-api.us-east-1.amazonaws.com/devops';
             }
 
             init() {
@@ -277,7 +296,7 @@
                 if (!token) throw new Error('No auth token');
 
                 try {
-                    const response = await fetch('https://nfvbev7jgc.execute-api.us-east-1.amazonaws.com/devops/properties', {
+                    const response = await fetch(`${this.apiBaseUrl}/properties`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
 
@@ -385,7 +404,7 @@
 
             async viewAnalysis(propertyId) {
                 try {
-                    const response = await fetch(`https://nfvbev7jgc.execute-api.us-east-1.amazonaws.com/devops/properties/${propertyId}/analysis`, {
+                    const response = await fetch(`${this.apiBaseUrl}/properties/${propertyId}/analysis`, {
                         headers: { 'Authorization': `Bearer ${auth.getToken()}` }
                     });
 
@@ -526,10 +545,9 @@
                 reportBtn.textContent = '⏳ Gerando relatório...';
 
                 try {
-                    // Chamar API Lambda para gerar PDF
                     const propertyIds = selectedProps.map(p => p.id);
                     
-                    const response = await fetch('https://nfvbev7jgc.execute-api.us-east-1.amazonaws.com/devops/properties/report', {
+                    const response = await fetch(`${this.apiBaseUrl}/properties/report`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${auth.getToken()}`,
@@ -547,7 +565,6 @@
 
                     const result = await response.json();
                     
-                    // Fazer download do PDF
                     this.downloadPDF(result.pdf, result.filename);
                     
                     if (window.toast) {
@@ -884,7 +901,6 @@
                     return;
                 }
 
-                // Show status
                 document.getElementById('csvPreviewSection').classList.add('hidden');
                 document.getElementById('csvImportStatus').classList.remove('hidden');
 
@@ -896,7 +912,7 @@
                 try {
                     statusText.textContent = `Importando ${this.csvData.length} propriedades...`;
 
-                    const response = await fetch('https://nfvbev7jgc.execute-api.us-east-1.amazonaws.com/devops/properties/import', {
+                    const response = await fetch(`${this.apiBaseUrl}/properties/import`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${auth.getToken()}`,
@@ -920,7 +936,6 @@
                         window.toast.show(`${result.imported} propriedades importadas com sucesso!`, 'success');
                     }
 
-                    // Reload properties
                     setTimeout(() => {
                         this.loadDashboardData();
                         this.closeCsvModal();
@@ -945,13 +960,11 @@
             
             async initWebSocket() {
                 const token = auth.getToken();
-                const wsUrl = 'wss://5lsoua3trg.execute-api.us-east-1.amazonaws.com/devops';
                 
-                this.ws = new WebSocket(`${wsUrl}?token=${token}`);
+                this.ws = new WebSocket(`${this.websocketUrl}?token=${token}`);
                 
                 this.ws.onopen = () => {
                     console.log('WebSocket conectado');
-                    // Subscrever para notificações de análise
                     this.ws.send(JSON.stringify({
                         action: 'subscribe',
                         topic: 'analysis.completed'
@@ -966,7 +979,6 @@
 
             handleWebSocketMessage(message) {
                 if (message.type === 'analysis_notification' && message.event === 'completed') {
-                    // Atualizar propriedade local
                     const propertyIndex = this.properties.findIndex(p => p.id === message.propertyId);
                     if (propertyIndex !== -1) {
                         this.properties[propertyIndex].analysisStatus = 'completed';

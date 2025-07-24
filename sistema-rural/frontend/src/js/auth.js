@@ -1,13 +1,21 @@
-// AWS Cognito Configuration
-const COGNITO_CONFIG = {
-    region: 'us-east-1',
-    userPoolId: 'us-east-1_EkIZzPSf0',
-    clientId: '45c9vf0elept4c6l50cv7eo67q',
-    domain: 'example-cloud-api-devops-auth'
+// AWS Cognito Configuration - usando configuração dinâmica
+const getCognitoConfig = () => {
+    if (window.SISTEMA_RURAL_CONFIG) {
+        return window.SISTEMA_RURAL_CONFIG.COGNITO;
+    }
+    
+    // Fallback para desenvolvimento local
+    return {
+        region: 'us-east-1',
+        userPoolId: 'us-east-1_EkIZzPSf0',
+        clientId: '45c9vf0elept4c6l50cv7eo67q',
+        domain: 'example-cloud-api-devops-auth.auth.us-east-1.amazoncognito.com'
+    };
 };
 
 class CognitoAuth {
     constructor() {
+        this.config = getCognitoConfig();
         this.accessToken = localStorage.getItem('accessToken');
         this.idToken = localStorage.getItem('idToken');
         this.refreshToken = localStorage.getItem('refreshToken');
@@ -18,8 +26,8 @@ class CognitoAuth {
     // Google SSO
     signInWithGoogle() {
         const redirectUri = window.location.origin + '/callback.html';
-        const url = `https://${COGNITO_CONFIG.domain}.auth.${COGNITO_CONFIG.region}.amazoncognito.com/oauth2/authorize?` +
-            `client_id=${COGNITO_CONFIG.clientId}&` +
+        const url = `https://${this.config.domain}/oauth2/authorize?` +
+            `client_id=${this.config.clientId}&` +
             `response_type=code&` +
             `scope=email+openid+profile&` +
             `redirect_uri=${encodeURIComponent(redirectUri)}&` +
@@ -34,14 +42,14 @@ class CognitoAuth {
         const redirectUri = window.location.origin + '/callback.html';
         
         try {
-            const response = await fetch(`https://${COGNITO_CONFIG.domain}.auth.${COGNITO_CONFIG.region}.amazoncognito.com/oauth2/token`, {
+            const response = await fetch(`https://${this.config.domain}/oauth2/token`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
                 body: new URLSearchParams({
                     grant_type: 'authorization_code',
-                    client_id: COGNITO_CONFIG.clientId,
+                    client_id: this.config.clientId,
                     code: code,
                     redirect_uri: redirectUri
                 })
@@ -71,7 +79,7 @@ class CognitoAuth {
     }
 
     async signUp(username, password) {
-        const url = `https://cognito-idp.${COGNITO_CONFIG.region}.amazonaws.com/`;
+        const url = `https://cognito-idp.${this.config.region}.amazonaws.com/`;
         
         const response = await fetch(url, {
             method: 'POST',
@@ -80,7 +88,7 @@ class CognitoAuth {
                 'X-Amz-Target': 'AWSCognitoIdentityProviderService.SignUp'
             },
             body: JSON.stringify({
-                ClientId: COGNITO_CONFIG.clientId,
+                ClientId: this.config.clientId,
                 Username: username,
                 Password: password,
                 UserAttributes: [
@@ -102,7 +110,7 @@ class CognitoAuth {
     }
 
     async confirmSignUp(username, confirmationCode) {
-        const url = `https://cognito-idp.${COGNITO_CONFIG.region}.amazonaws.com/`;
+        const url = `https://cognito-idp.${this.config.region}.amazonaws.com/`;
         
         const response = await fetch(url, {
             method: 'POST',
@@ -111,7 +119,7 @@ class CognitoAuth {
                 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ConfirmSignUp'
             },
             body: JSON.stringify({
-                ClientId: COGNITO_CONFIG.clientId,
+                ClientId: this.config.clientId,
                 Username: username,
                 ConfirmationCode: confirmationCode
             })
@@ -121,7 +129,7 @@ class CognitoAuth {
     }
 
     async resendConfirmationCode(username) {
-        const url = `https://cognito-idp.${COGNITO_CONFIG.region}.amazonaws.com/`;
+        const url = `https://cognito-idp.${this.config.region}.amazonaws.com/`;
         
         const response = await fetch(url, {
             method: 'POST',
@@ -130,7 +138,7 @@ class CognitoAuth {
                 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ResendConfirmationCode'
             },
             body: JSON.stringify({
-                ClientId: COGNITO_CONFIG.clientId,
+                ClientId: this.config.clientId,
                 Username: username
             })
         });
@@ -139,7 +147,7 @@ class CognitoAuth {
     }
 
     async signIn(username, password) {
-        const url = `https://cognito-idp.${COGNITO_CONFIG.region}.amazonaws.com/`;
+        const url = `https://cognito-idp.${this.config.region}.amazonaws.com/`;
         this.currentUsername = username;
         
         const response = await fetch(url, {
@@ -149,7 +157,7 @@ class CognitoAuth {
                 'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth'
             },
             body: JSON.stringify({
-                ClientId: COGNITO_CONFIG.clientId,
+                ClientId: this.config.clientId,
                 AuthFlow: 'USER_PASSWORD_AUTH',
                 AuthParameters: {
                     USERNAME: username,
@@ -174,7 +182,7 @@ class CognitoAuth {
     }
 
     async respondToNewPasswordRequired(session, newPassword) {
-        const url = `https://cognito-idp.${COGNITO_CONFIG.region}.amazonaws.com/`;
+        const url = `https://cognito-idp.${this.config.region}.amazonaws.com/`;
         
         const response = await fetch(url, {
             method: 'POST',
@@ -183,7 +191,7 @@ class CognitoAuth {
                 'X-Amz-Target': 'AWSCognitoIdentityProviderService.RespondToAuthChallenge'
             },
             body: JSON.stringify({
-                ClientId: COGNITO_CONFIG.clientId,
+                ClientId: this.config.clientId,
                 ChallengeName: 'NEW_PASSWORD_REQUIRED',
                 Session: session,
                 ChallengeResponses: {
@@ -283,14 +291,14 @@ class CognitoAuth {
         }
 
         try {
-            const response = await fetch(`https://${COGNITO_CONFIG.domain}.auth.${COGNITO_CONFIG.region}.amazoncognito.com/oauth2/token`, {
+            const response = await fetch(`https://${this.config.domain}/oauth2/token`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
                 body: new URLSearchParams({
                     grant_type: 'refresh_token',
-                    client_id: COGNITO_CONFIG.clientId,
+                    client_id: this.config.clientId,
                     refresh_token: this.refreshToken
                 })
             });
