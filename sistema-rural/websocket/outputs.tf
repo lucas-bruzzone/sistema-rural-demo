@@ -34,10 +34,10 @@ output "websocket_execution_arn" {
 output "websocket_summary" {
   description = "Resumo do módulo WebSocket"
   value = {
-    api_id       = aws_apigatewayv2_api.websocket.id
-    endpoint     = aws_apigatewayv2_api.websocket.api_endpoint
-    stage_url    = "${aws_apigatewayv2_api.websocket.api_endpoint}/${var.environment}"
-    environment  = var.environment
-    routes       = ["$connect", "$disconnect", "subscribe", "unsubscribe"]
+    api_id      = aws_apigatewayv2_api.websocket.id
+    endpoint    = aws_apigatewayv2_api.websocket.api_endpoint
+    stage_url   = "${aws_apigatewayv2_api.websocket.api_endpoint}/${var.environment}"
+    environment = var.environment
+    routes      = ["$connect", "$disconnect", "subscribe", "unsubscribe"]
   }
 }

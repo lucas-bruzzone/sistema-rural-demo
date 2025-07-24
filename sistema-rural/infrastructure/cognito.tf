@@ -116,11 +116,6 @@ resource "aws_cognito_user_pool_client" "main" {
 
   # Prevent User Existence Errors
   prevent_user_existence_errors = "ENABLED"
-
-  tags = {
-    Name = "${var.project_name}-app-client"
-    Type = "authentication"
-  }
 }
 
 # ===================================
@@ -130,11 +125,6 @@ resource "aws_cognito_user_pool_client" "main" {
 resource "aws_cognito_user_pool_domain" "main" {
   domain       = "${var.project_name}-${var.environment}-auth"
   user_pool_id = aws_cognito_user_pool.main.id
-
-  tags = {
-    Name = "${var.project_name}-auth-domain"
-    Type = "authentication"
-  }
 }
 
 # ===================================

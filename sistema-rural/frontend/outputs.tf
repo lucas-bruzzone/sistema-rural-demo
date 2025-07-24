@@ -28,8 +28,8 @@ output "frontend_summary" {
   value = {
     bucket_name        = aws_s3_bucket.frontend.id
     cloudfront_id      = aws_cloudfront_distribution.frontend.id
-    url               = "https://${aws_cloudfront_distribution.frontend.domain_name}"
-    api_endpoint      = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
+    url                = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+    api_endpoint       = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
     websocket_endpoint = data.terraform_remote_state.websocket.outputs.websocket_stage_url
   }
 }

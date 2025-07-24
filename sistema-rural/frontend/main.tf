@@ -189,17 +189,17 @@ resource "aws_s3_object" "frontend_files" {
 
 locals {
   mime_types = {
-    ".html" = "text/html"
-    ".css"  = "text/css"
-    ".js"   = "application/javascript"
-    ".json" = "application/json"
-    ".png"  = "image/png"
-    ".jpg"  = "image/jpeg"
-    ".jpeg" = "image/jpeg"
-    ".gif"  = "image/gif"
-    ".svg"  = "image/svg+xml"
-    ".ico"  = "image/x-icon"
-    ".woff" = "font/woff"
+    ".html"  = "text/html"
+    ".css"   = "text/css"
+    ".js"    = "application/javascript"
+    ".json"  = "application/json"
+    ".png"   = "image/png"
+    ".jpg"   = "image/jpeg"
+    ".jpeg"  = "image/jpeg"
+    ".gif"   = "image/gif"
+    ".svg"   = "image/svg+xml"
+    ".ico"   = "image/x-icon"
+    ".woff"  = "font/woff"
     ".woff2" = "font/woff2"
   }
 }
@@ -209,13 +209,13 @@ locals {
 # Template do arquivo de configuração
 resource "local_file" "config_js" {
   content = templatefile("${path.module}/config.js.tpl", {
-    api_gateway_url       = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
-    cognito_region        = data.terraform_remote_state.infrastructure.outputs.cognito_region
-    cognito_user_pool_id  = data.terraform_remote_state.infrastructure.outputs.cognito_user_pool_id
-    cognito_client_id     = data.terraform_remote_state.infrastructure.outputs.cognito_client_id
-    cognito_domain        = "${data.terraform_remote_state.infrastructure.outputs.cognito_domain}.auth.${data.terraform_remote_state.infrastructure.outputs.cognito_region}.amazoncognito.com"
-    websocket_url         = data.terraform_remote_state.websocket.outputs.websocket_stage_url
-    environment           = var.environment
+    api_gateway_url      = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
+    cognito_region       = data.terraform_remote_state.infrastructure.outputs.cognito_region
+    cognito_user_pool_id = data.terraform_remote_state.infrastructure.outputs.cognito_user_pool_id
+    cognito_client_id    = data.terraform_remote_state.infrastructure.outputs.cognito_client_id
+    cognito_domain       = "${data.terraform_remote_state.infrastructure.outputs.cognito_domain}.auth.${data.terraform_remote_state.infrastructure.outputs.cognito_region}.amazoncognito.com"
+    websocket_url        = data.terraform_remote_state.websocket.outputs.websocket_stage_url
+    environment          = var.environment
   })
   filename = "${path.module}/src/js/config.js"
 }
