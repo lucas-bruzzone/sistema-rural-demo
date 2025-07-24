@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapeamento - Sistema Rural</title>
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <a href="/">Sistema Rural</a>
+            </div>
+            <nav class="nav">
+                <a href="/" class="nav-link">Home</a>
+            </nav>
+            <div class="auth-section">
+                <div class="user-menu" id="userMenu">
+                    <button class="user-avatar" id="userAvatar">
+                        <span id="userInitial">U</span>
+                    </button>
+                    <div class="dropdown" id="userDropdown">
+                        <a href="dashboard.html" class="dropdown-item">
+                            <span class="icon">📊</span> Dashboard
+                        </a>
+                        <a href="mapeamento.html" class="dropdown-item active">
+                            <span class="icon">🗺️</span> Mapeamento
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item logout-btn" id="logoutBtn">
+                            <span class="icon">🚪</span> Sair
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main mapping-main">
+        <div class="container">
+            <!-- Page Header -->
+            <section class="page-header">
+                <h1>Sistema de Mapeamento</h1>
+                <p>Desenhe e gerencie suas propriedades rurais com precisão cartográfica</p>
+            </section>
+
+            <!-- Instructions -->
+            <section class="card">
+                <div class="card-header">
+                    <h3>Como usar o mapeamento:</h3>
+                </div>
+                <div class="card-body">
+                    <div class="skills-grid">
+                        <div class="instruction-item">
+                            <span class="instruction-icon">⬟</span>
+                            <span>Clique no ícone de polígono na barra de ferramentas</span>
+                        </div>
+                        <div class="instruction-item">
+                            <span class="instruction-icon">🖱️</span>
+                            <span>Clique em pontos no mapa para desenhar a área</span>
+                        </div>
+                        <div class="instruction-item">
+                            <span class="instruction-icon">🔄</span>
+                            <span>Clique no primeiro ponto para fechar o polígono</span>
+                        </div>
+                        <div class="instruction-item">
+                            <span class="instruction-icon">💾</span>
+                            <span>Preencha os dados e salve a propriedade</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Map Section -->
+            <section class="map-section">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="map-header-content">
+                            <div>
+                                <h2>Mapa Interativo</h2>
+                                <p>São Sebastião do Paraíso, MG - Brasil</p>
+                            </div>
+                            <div class="map-controls-info">
+                                <span class="status-badge online" id="mapStatus">🟢 Carregando...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="map-container">
+                        <div id="map" class="map-canvas"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Property Form -->
+            <section class="property-form-section hidden" id="propertyForm">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Cadastrar Propriedade</h3>
+                    </div>
+                    <div class="card-body">
+                        <form class="property-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="propertyName">Nome da Propriedade *</label>
+                                    <input type="text" id="propertyName" placeholder="Ex: Fazenda Santa Maria" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="propertyType">Tipo de Propriedade</label>
+                                    <select id="propertyType">
+                                        <option value="fazenda">Fazenda</option>
+                                        <option value="sitio">Sítio</option>
+                                        <option value="chacara">Chácara</option>
+                                        <option value="terreno">Terreno Rural</option>
+                                        <option value="outros">Outros</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="propertyDescription">Descrição (opcional)</label>
+                                <textarea id="propertyDescription" placeholder="Descrição da propriedade..." rows="3"></textarea>
+                            </div>
+                            <div class="property-metrics">
+                                <div class="metric-item">
+                                    <span class="metric-icon">📐</span>
+                                    <div class="metric-content">
+                                        <span class="metric-label">Área calculada</span>
+                                        <span class="metric-value" id="calculatedArea">-</span>
+                                    </div>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-icon">📏</span>
+                                    <div class="metric-content">
+                                        <span class="metric-label">Perímetro</span>
+                                        <span class="metric-value" id="calculatedPerimeter">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer">
+                        <div class="form-actions">
+                            <button id="savePropertyBtn" class="btn btn-primary">
+                                💾 Salvar Propriedade
+                            </button>
+                            <button id="cancelFormBtn" class="btn btn-secondary">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Properties List -->
+            <section class="properties-section">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="section-header">
+                            <div>
+                                <h3>Minhas Propriedades</h3>
+                                <p class="section-subtitle">Gerencie todas as suas propriedades cadastradas</p>
+                            </div>
+                            <button id="refreshPropertiesBtn" class="btn btn-outline btn-small">
+                                🔄 Atualizar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="propertiesList" class="properties-grid">
+                            <div class="loading-state">
+                                <div class="loading-spinner"></div>
+                                <p>Carregando propriedades...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal (necessário para components.js) -->
+    <div class="modal-overlay hidden" id="loginModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Sistema</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Modal placeholder</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/auth.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/main.js"></script>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Draw JS -->
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <!-- Turf.js for geometric calculations -->
+    <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+    
+    <!-- Map Script -->
+    <script src="js/map.js"></script>
+
+    <script>
+        // Direct logout handler for mapeamento
+        document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('#logoutBtn') || e.target.closest('.logout-btn')) {
+                    e.preventDefault();
+                    auth.signOut();
+                }
+            });
+        });
+    </script>
+
+    <style>
+        .page-header {
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: var(--space-md);
+        }
+
+        .page-header p {
+            font-size: 1.1rem;
+            color: var(--gray-600);
+        }
+
+        .instruction-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-sm);
+        }
+
+        .instruction-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .map-section {
+            margin-bottom: var(--space-xl);
+        }
+
+        .map-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--space-md);
+        }
+
+        .map-controls-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .map-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            min-height: 400px;
+        }
+
+        .map-canvas {
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+        }
+
+        .property-form-section {
+            margin-bottom: var(--space-xl);
+        }
+
+        .property-form {
+            width: 100%;
+        }
+
+        .property-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-lg);
+            padding: var(--space-lg);
+            background: var(--gray-50);
+            border-radius: var(--border-radius);
+            margin-bottom: var(--space-lg);
+        }
+
+        .metric-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .metric-icon {
+            font-size: 1.5rem;
+            opacity: 0.8;
+        }
+
+        .metric-content {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 1.1rem;
+            color: var(--gray-900);
+            font-weight: 600;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: var(--space-md);
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .properties-section .section-subtitle {
+            color: var(--gray-500);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .properties-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: var(--space-lg);
+        }
+
+        .property-card {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--border-radius-lg);
+            padding: var(--space-lg);
+            transition: var(--transition-slow);
+        }
+
+        .property-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary);
+        }
+
+        .property-card h4 {
+            color: var(--gray-900);
+            margin-bottom: var(--space-sm);
+            font-size: 1.1rem;
+        }
+
+        .property-type {
+            background: var(--primary);
+            color: white;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--border-radius);
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: capitalize;
+            margin-bottom: var(--space-md);
+            display: inline-block;
+        }
+
+        .property-actions {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            margin-top: var(--space-md);
+        }
+
+        .property-date {
+            color: var(--gray-500);
+            font-size: 0.8rem;
+            margin-top: var(--space-sm);
+        }
+
+        /* Leaflet Customizations */
+        .leaflet-draw-toolbar {
+            background: white !important;
+            border-radius: var(--border-radius) !important;
+            box-shadow: var(--shadow-md) !important;
+            border: 1px solid var(--gray-200) !important;
+        }
+
+        .leaflet-draw-toolbar a {
+            border-radius: var(--border-radius) !important;
+            transition: var(--transition) !important;
+        }
+
+        .leaflet-draw-toolbar a:hover {
+            background: var(--primary) !important;
+            color: white !important;
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: var(--border-radius) !important;
+            box-shadow: var(--shadow-lg) !important;
+        }
+
+        .popup-content {
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .popup-content strong {
+            color: var(--gray-900);
+            font-size: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .map-header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .properties-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-header h1 {
+                font-size: 2rem;
+            }
+            
+            .map-container {
+                height: 350px;
+            }
+            
+            .instruction-item {
+                flex-direction: column;
+                text-align: center;
+                gap: var(--space-sm);
+            }
+        }
+    </style>
+</body>
+</html>

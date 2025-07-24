@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucas Bruzzone - Cientista de Dados</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <a href="/">Lucas Bruzzone</a>
+            </div>
+            <div class="auth-section">
+                <button class="login-btn" id="loginBtn">Acessar Sistema</button>
+                
+                <div class="user-menu hidden" id="userMenu">
+                    <button class="user-avatar" id="userAvatar">
+                        <span id="userInitial">L</span>
+                    </button>
+                    <div class="dropdown" id="userDropdown">
+                        <a href="dashboard.html" class="dropdown-item">
+                            <span class="icon">📊</span> Dashboard
+                        </a>
+                        <a href="mapeamento.html" class="dropdown-item">
+                            <span class="icon">🗺️</span> Mapeamento
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item logout-btn" id="logoutBtn">
+                            <span class="icon">🚪</span> Sair
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <h1 class="hero-title">
+                        Olá 👋, eu sou <span class="highlight">Lucas Ricardo Duarte Bruzzone</span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        Cientista de Dados | 2x AWS Certified | Mestre em Machine Learning | Professor Universitário
+                    </p>
+                    <div class="hero-actions">
+                        <button class="btn btn-primary btn-large" id="heroLoginBtn">Testar Sistema Demo</button>
+                        <a href="#projeto" class="btn btn-outline btn-large">Ver Projeto</a>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="card hero-card">
+                        <div class="card-header">
+                            <h3>💻 Desenvolvedor</h3>
+                        </div>
+                        <div class="card-body">
+                            <p>🚀 Cloud & Data Engineering</p>
+                            <p>📊 Machine Learning & NLP</p>
+                            <p>🎓 Professor Universitário</p>
+                            <p>☁️ AWS Certified</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section class="showcase">
+            <div class="container">
+                <h2 class="section-title">🚀 Sobre Mim</h2>
+                <div class="skills-grid">
+                    <div class="skill-card">
+                        <div class="skill-icon">📊</div>
+                        <h3>Profissional</h3>
+                        <p>Data Analyst na E-ctare, focado em arquitetura cloud e pipelines de dados</p>
+                    </div>
+                    <div class="skill-card">
+                        <div class="skill-icon">🎓</div>
+                        <h3>Acadêmico</h3>
+                        <p>Professor de Engenharia de Software e Microsserviços na Libertas Faculdades</p>
+                    </div>
+                    <div class="skill-card">
+                        <div class="skill-icon">🎯</div>
+                        <h3>Formação</h3>
+                        <p>Mestre em Ciências da Computação (UFSCar) com especialização em ML e NLP</p>
+                    </div>
+                    <div class="skill-card">
+                        <div class="skill-icon">☁️</div>
+                        <h3>Certificações</h3>
+                        <p>AWS Certified AI Practitioner • AWS Cloud Practitioner • AWS Academy Educator</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Project Demo Section -->
+        <section class="showcase" id="projeto">
+            <div class="container">
+                <h2 class="section-title">Sistema Desenvolvido</h2>
+                <div class="project-card">
+                    <div class="project-content">
+                        <h3 class="project-title">Sistema de Mapeamento Rural</h3>
+                        <p class="project-description">
+                            Aplicação web completa para gestão de propriedades rurais com mapeamento interativo, 
+                            cálculos automáticos de área/perímetro e integração cloud AWS.
+                        </p>
+                        
+                        <div class="project-tech">
+                            <span class="tech-tag">AWS Lambda</span>
+                            <span class="tech-tag">Leaflet.js</span>
+                            <span class="tech-tag">DynamoDB</span>
+                            <span class="tech-tag">Cognito</span>
+                            <span class="tech-tag">API Gateway</span>
+                            <span class="tech-tag">Turf.js</span>
+                        </div>
+                        
+                        <div class="project-actions">
+                            <button class="btn btn-primary" id="projectLoginBtn">Acessar Sistema</button>
+                        </div>
+                    </div>
+                    <div class="project-visual">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>🗺️ Demo Interativo</h3>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>✨ Recursos:</strong></p>
+                                <p>• Mapeamento com Leaflet.js</p>
+                                <p>• Cálculos geométricos precisos</p>
+                                <p>• Autenticação AWS Cognito</p>
+                                <p>• API Serverless completa</p>
+                                <p>• Interface responsiva</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Skills Section -->
+        <section class="skills">
+            <div class="container">
+                <h2 class="section-title">🛠️ Stack Tecnológico</h2>
+                <div class="skills-grid">
+                    <div class="skill-card">
+                        <div class="skill-icon">📊</div>
+                        <h3>Data & Analytics</h3>
+                        <p>Python, Metabase, ETL/ELT, Machine Learning, NLP, Business Intelligence</p>
+                    </div>
+                    <div class="skill-card">
+                        <div class="skill-icon">☁️</div>
+                        <h3>Cloud & DevOps</h3>
+                        <p>AWS (Lambda, DynamoDB, S3, Cognito), Terraform, GitHub Actions, Docker</p>
+                    </div>
+                    <div class="skill-card">
+                        <div class="skill-icon">🗄️</div>
+                        <h3>Databases & APIs</h3>
+                        <p>SQL, NoSQL, REST APIs, Modelagem de dados, Pipeline de dados</p>
+                    </div>
+                    <div class="skill-card">
+                        <div class="skill-icon">🎓</div>
+                        <h3>Ensino & Research</h3>
+                        <p>Engenharia de Software, Microsserviços, ML Research, Orientação acadêmica</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>🌐 Conecte-se</h4>
+                    <a href="https://www.linkedin.com/in/lucas-bruzzone/" target="_blank" class="footer-link">LinkedIn</a>
+                    <a href="mailto:lucas.rbruzzone@gmail.com" class="footer-link">Email</a>
+                </div>
+                <div class="footer-section">
+                    <h4>📞 Contato</h4>
+                    <p>📧 lucas.rbruzzone@gmail.com</p>
+                    <p>📱 (35) 98800-6634</p>
+                </div>
+                <div class="footer-section">
+                    <h4>📍 Localização</h4>
+                    <p>🇧🇷 São Sebastião do Paraíso, MG</p>
+                    <p>🎓 Professor Universitário</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Lucas Bruzzone. Desenvolvido com 💜</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal de Login/Cadastro -->
+    <div class="modal-overlay hidden" id="loginModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Acessar Sistema</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Google SSO -->
+                <div class="google-sso-section">
+                    <button class="btn-google-standard" id="googleSignInBtn">
+                        <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Continuar com Google
+                    </button>
+                </div>
+
+                <div class="auth-divider">
+                    <span>ou</span>
+                </div>
+
+                <!-- Tabs -->
+                <div class="modal-tabs">
+                    <button class="tab-btn active" id="loginTabBtn">Entrar</button>
+                    <button class="tab-btn" id="signupTabBtn">Cadastrar</button>
+                </div>
+                
+                <!-- Formulário de Login -->
+                <div class="auth-form" id="loginFormDiv">
+                    <form class="login-form" id="loginForm">
+                        <div class="form-group">
+                            <label for="email">Email ou usuário</label>
+                            <input type="text" id="email" placeholder="Digite seu email ou usuário" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Senha</label>
+                            <input type="password" id="password" placeholder="Digite sua senha" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" id="submitLogin">
+                            Entrar
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Formulário de Cadastro -->
+                <div class="auth-form hidden" id="signupFormDiv">
+                    <form class="signup-form" id="signupForm">
+                        <div class="form-group">
+                            <label for="signupEmail">Email</label>
+                            <input type="email" id="signupEmail" placeholder="Digite seu email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signupPassword">Senha</label>
+                            <input type="password" id="signupPassword" placeholder="Crie uma senha segura" required>
+                            <small class="password-hint" id="passwordHint">
+                                Mínimo 8 caracteres, maiúscula, minúscula e número
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirmar Senha</label>
+                            <input type="password" id="confirmPassword" placeholder="Confirme sua senha" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" id="submitSignup">
+                            Cadastrar
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Formulário de Confirmação -->
+                <div class="auth-form hidden" id="confirmationDiv">
+                    <div class="confirmation-header">
+                        <h4>✉️ Confirme seu Email</h4>
+                        <p>Enviamos um código de confirmação para seu email.</p>
+                    </div>
+                    <form class="confirmation-form" id="confirmationForm">
+                        <div class="form-group">
+                            <label for="confirmCode">Código de Confirmação</label>
+                            <input type="text" id="confirmCode" placeholder="Digite o código recebido" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" id="submitConfirm">
+                            Confirmar
+                        </button>
+                    </form>
+                    <div class="auth-switch">
+                        Não recebeu o código? 
+                        <button class="link-btn" id="resendCodeBtn">Reenviar</button>
+                    </div>
+                </div>
+
+                <div id="authStatus" class="auth-status hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/auth.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/main.js"></script>
+
+    <style>
+        .google-sso-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .confirmation-header {
+            text-align: center;
+            margin-bottom: var(--space-lg);
+        }
+
+        .confirmation-header h4 {
+            color: var(--primary);
+            margin-bottom: var(--space-sm);
+            font-size: 1.2rem;
+        }
+
+        .confirmation-header p {
+            color: var(--gray-600);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: var(--space-lg);
+            font-size: 0.9rem;
+            color: var(--gray-600);
+        }
+
+        .link-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: underline;
+            padding: 0;
+            font-size: inherit;
+        }
+
+        .link-btn:hover {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .hero-card .card-header {
+            background: var(--primary);
+            color: white;
+        }
+
+        .hero-card .card-header h3 {
+            color: white;
+            margin: 0;
+        }
+    </style>
+</body>
+</html>

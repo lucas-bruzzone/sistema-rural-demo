@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erro - Sistema Rural</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .error-container {
+            min-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .error-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 3rem;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .error-title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .error-message {
+            color: #6b7280;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .error-card {
+                padding: 2rem 1rem;
+            }
+            .error-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <a href="/">Sistema Rural</a>
+            </div>
+            <nav class="nav">
+                <a href="/" class="nav-link">Home</a>
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="mapeamento.html" class="nav-link">Mapeamento</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="error-container">
+            <div class="error-card">
+                <div class="error-icon">❌</div>
+                <h1 class="error-title">Ops! Algo deu errado</h1>
+                <p class="error-message">
+                    A página que você está procurando não foi encontrada ou ocorreu um erro.
+                </p>
+                <div class="error-actions">
+                    <a href="/" class="btn btn-primary">🏠 Voltar ao início</a>
+                    <a href="dashboard.html" class="btn btn-outline">📊 Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Detectar tipo de erro pela URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorType = urlParams.get('type');
+        
+        if (errorType === '404') {
+            document.querySelector('.error-title').textContent = 'Página não encontrada';
+            document.querySelector('.error-message').textContent = 'A página que você procura não existe.';
+            document.querySelector('.error-icon').textContent = '🔍';
+        } else if (errorType === '500') {
+            document.querySelector('.error-title').textContent = 'Erro do servidor';
+            document.querySelector('.error-message').textContent = 'Problema interno. Tente novamente em alguns minutos.';
+            document.querySelector('.error-icon').textContent = '⚠️';
+        } else if (errorType === 'auth') {
+            document.querySelector('.error-title').textContent = 'Sessão expirada';
+            document.querySelector('.error-message').textContent = 'Faça login novamente para continuar.';
+            document.querySelector('.error-icon').textContent = '🔑';
+        }
+    </script>
+</body>
+</html>

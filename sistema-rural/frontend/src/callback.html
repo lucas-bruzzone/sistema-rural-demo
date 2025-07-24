@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processando Login...</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="callback-container">
+        <div class="callback-content">
+            <div id="loadingState">
+                <div class="loading-spinner"></div>
+                <h2>Processando Login</h2>
+                <p class="callback-message">Finalizando autenticação...</p>
+                <p class="callback-details">Aguarde enquanto validamos suas credenciais.</p>
+            </div>
+            
+            <div id="errorState" style="display: none;">
+                <div class="error-content">
+                    <h2>❌ Erro no Login</h2>
+                    <p class="callback-message" id="errorMessage">Algo deu errado durante a autenticação.</p>
+                    <p class="callback-details">Tente fazer login novamente.</p>
+                    <button class="btn btn-outline" onclick="redirectToHome()">Voltar ao Início</button>
+                </div>
+            </div>
+            
+            <div id="successState" style="display: none;">
+                <div class="success-content">
+                    <h2>✅ Login Realizado</h2>
+                    <p class="callback-message">Redirecionando para o dashboard...</p>
+                    <p class="callback-details">Você será redirecionado automaticamente.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        // Callback Processor
+        class CallbackProcessor {
+            constructor() {
+                this.urlParams = new URLSearchParams(window.location.search);
+                this.code = this.urlParams.get('code');
+                this.error = this.urlParams.get('error');
+                this.errorDescription = this.urlParams.get('error_description');
+                
+                this.init();
+            }
+
+            // Helper to get correct path for localhost
+            getPath(htmlFile) {
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                return isLocalhost ? `/src/${htmlFile}` : `/${htmlFile}`;
+            }
+
+            async init() {
+                if (this.error) {
+                    this.showError(`Erro de autorização: ${this.errorDescription || this.error}`);
+                    return;
+                }
+                
+                if (!this.code) {
+                    this.showError('Código de autorização não encontrado na URL');
+                    return;
+                }
+                
+                try {
+                    await this.exchangeCodeForTokens();
+                } catch (error) {
+                    this.showError(`Erro ao processar login: ${error.message}`);
+                }
+            }
+
+            async exchangeCodeForTokens() {
+                try {
+                    const result = await auth.exchangeCodeForTokens(this.code);
+                    
+                    if (result.success) {
+                        this.showSuccess();
+                        
+                        setTimeout(() => {
+                            window.location.href = '/dashboard.html';
+                        }, 1500);
+                        
+                    } else {
+                        throw new Error(result.error || 'Falha na troca de tokens');
+                    }
+                } catch (error) {
+                    throw new Error(`Falha na autenticação: ${error.message}`);
+                }
+            }
+
+            showError(message) {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('successState').style.display = 'none';
+                document.getElementById('errorState').style.display = 'block';
+                
+                const errorElement = document.getElementById('errorMessage');
+                if (errorElement) {
+                    errorElement.textContent = message;
+                }
+                
+                setTimeout(() => {
+                    this.redirectToHome();
+                }, 5000);
+            }
+
+            showSuccess() {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('errorState').style.display = 'none';
+                document.getElementById('successState').style.display = 'block';
+            }
+
+            redirectToHome() {
+                window.location.href = '/';
+            }
+        }
+
+        // Global function for button
+        function redirectToHome() {
+            window.location.href = '/';
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof auth === 'undefined') {
+                document.getElementById('errorMessage').textContent = 'Erro: Sistema de autenticação não carregado';
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('errorState').style.display = 'block';
+                return;
+            }
+            
+            new CallbackProcessor();
+        });
+        
+        // Fallback timeout
+        setTimeout(() => {
+            const loadingState = document.getElementById('loadingState');
+            if (loadingState && loadingState.style.display !== 'none') {
+                document.getElementById('errorMessage').textContent = 'Timeout: Login demorou muito para processar';
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('errorState').style.display = 'block';
+            }
+        }, 10000);
+    </script>
+
+    <style>
+        .callback-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+        
+        .callback-content {
+            background: rgba(255, 255, 255, 0.1);
+            padding: var(--space-3xl);
+            border-radius: var(--border-radius-xl);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .error-content {
+            color: #ff6b6b;
+        }
+        
+        .success-content {
+            color: #51cf66;
+        }
+        
+        .callback-message {
+            font-size: 1.1rem;
+            margin-bottom: var(--space-lg);
+        }
+        
+        .callback-details {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: var(--space-lg);
+        }
+
+        @media (max-width: 480px) {
+            .callback-content {
+                padding: var(--space-xl);
+                margin: var(--space-md);
+            }
+        }
+    </style>
+</body>
+</html>
