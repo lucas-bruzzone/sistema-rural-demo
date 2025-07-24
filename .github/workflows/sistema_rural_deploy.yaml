@@ -71,10 +71,10 @@ jobs:
             - 'sistema-rural/5.lambda-analysis/**'
           api-gateway:
             - 'sistema-rural/6.api-gateway/**'
-          websocket-infrastructure:
-            - 'sistema-rural/7.websocket-infrastructure/**'
           lambda-handle-websocket:
-            - 'sistema-rural/8.lambda-handle-websocket/**'
+            - 'sistema-rural/7.lambda-handle-websocket/**'
+          websocket-infrastructure:
+            - 'sistema-rural/8.websocket-infrastructure/**'
           lambda-handle-events:
             - 'sistema-rural/9.lambda-handle-events/**'
           frontend:
@@ -304,42 +304,7 @@ jobs:
           terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
-  # 7. WebSocket Infrastructure
-  deploy-websocket-infrastructure:
-    name: 'Deploy WebSocket Infrastructure'
-    runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-lambda-authorizer]
-    if: |
-      always() && !failure() && !cancelled() && (
-        needs.detect-changes.outputs.deploy-all == 'true' || 
-        needs.detect-changes.outputs.websocket-infrastructure == 'true'
-      )
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
-
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-
-    - name: Terraform WebSocket Infrastructure
-      run: |
-        cd sistema-rural/7.websocket-infrastructure
-        terraform init
-        terraform validate
-        terraform plan -var-file="tfvars/devops.tfvars" -no-color
-        
-        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
-          terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
-        fi
-
-  # 8. Lambda Handle WebSocket
+  # 7. Lambda Handle WebSocket
   deploy-lambda-handle-websocket:
     name: 'Deploy Lambda Handle WebSocket'
     runs-on: ubuntu-latest
@@ -347,7 +312,8 @@ jobs:
     if: |
       always() && !failure() && !cancelled() && (
         needs.detect-changes.outputs.deploy-all == 'true' || 
-        needs.detect-changes.outputs.lambda-handle-websocket == 'true'
+        needs.detect-changes.outputs.lambda-handle-websocket == 'true' ||
+        needs.detect-changes.outputs.websocket-infrastructure == 'true'
       )
     
     steps:
@@ -371,6 +337,41 @@ jobs:
     - name: Terraform Lambda Handle WebSocket
       run: |
         cd sistema-rural/8.lambda-handle-websocket/terraform
+        terraform init
+        terraform validate
+        terraform plan -var-file="tfvars/devops.tfvars" -no-color
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
+        fi
+
+  # 8. WebSocket Infrastructure
+  deploy-websocket-infrastructure:
+    name: 'Deploy WebSocket Infrastructure'
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-lambda-authorizer, deploy-lambda-handle-websocket]
+    if: |
+      always() && !failure() && !cancelled() && (
+        needs.detect-changes.outputs.deploy-all == 'true' || 
+        needs.detect-changes.outputs.websocket-infrastructure == 'true'
+      )
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform WebSocket Infrastructure
+      run: |
+        cd sistema-rural/7.websocket-infrastructure
         terraform init
         terraform validate
         terraform plan -var-file="tfvars/devops.tfvars" -no-color
@@ -465,8 +466,8 @@ jobs:
       deploy-lambda-analysis-infra,
       deploy-lambda-analysis,
       deploy-api-gateway, 
-      deploy-websocket-infrastructure,
       deploy-lambda-handle-websocket,
+      deploy-websocket-infrastructure,
       deploy-lambda-handle-events,
       deploy-frontend
     ]
@@ -484,7 +485,7 @@ jobs:
         echo "| Lambda Analysis Infra | ${{ needs.deploy-lambda-analysis-infra.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Lambda Analysis | ${{ needs.deploy-lambda-analysis.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| API Gateway | ${{ needs.deploy-api-gateway.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| WebSocket Infrastructure | ${{ needs.deploy-websocket-infrastructure.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Lambda Handle WebSocket | ${{ needs.deploy-lambda-handle-websocket.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| WebSocket Infrastructure | ${{ needs.deploy-websocket-infrastructure.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Lambda Handle Events | ${{ needs.deploy-lambda-handle-events.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Frontend | ${{ needs.deploy-frontend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
