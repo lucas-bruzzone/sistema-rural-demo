@@ -28,22 +28,22 @@ output "config_js_path" {
   value       = local_file.config_js.filename
 }
 
-output "cloudfront_invalidation_id" {
-  description = "ID da invalidação do CloudFront"
-  value       = aws_cloudfront_invalidation.frontend.id
+output "cloudfront_invalidation_trigger" {
+  description = "Trigger da invalidação do CloudFront"
+  value       = null_resource.cloudfront_invalidation.id
 }
 
 output "frontend_summary" {
   description = "Resumo completo do frontend"
   value = {
-    bucket_name        = aws_s3_bucket.frontend.id
-    cloudfront_id      = aws_cloudfront_distribution.frontend.id
-    cloudfront_domain  = aws_cloudfront_distribution.frontend.domain_name
-    url                = "https://${aws_cloudfront_distribution.frontend.domain_name}"
-    api_endpoint       = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
-    websocket_endpoint = data.terraform_remote_state.websocket.outputs.websocket_stage_url
-    cognito_domain     = "${data.terraform_remote_state.infrastructure.outputs.cognito_domain}.auth.${data.terraform_remote_state.infrastructure.outputs.cognito_region}.amazoncognito.com"
-    environment        = var.environment
-    invalidation_id    = aws_cloudfront_invalidation.frontend.id
+    bucket_name          = aws_s3_bucket.frontend.id
+    cloudfront_id        = aws_cloudfront_distribution.frontend.id
+    cloudfront_domain    = aws_cloudfront_distribution.frontend.domain_name
+    url                  = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+    api_endpoint         = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
+    websocket_endpoint   = data.terraform_remote_state.websocket.outputs.websocket_stage_url
+    cognito_domain       = "${data.terraform_remote_state.infrastructure.outputs.cognito_domain}.auth.${data.terraform_remote_state.infrastructure.outputs.cognito_region}.amazoncognito.com"
+    environment          = var.environment
+    invalidation_trigger = null_resource.cloudfront_invalidation.id
   }
 }

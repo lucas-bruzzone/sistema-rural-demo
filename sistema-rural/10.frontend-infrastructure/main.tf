@@ -220,9 +220,15 @@ resource "aws_s3_object" "config_js" {
 # INVALIDAÇÃO DO CLOUDFRONT
 # ===================================
 
-resource "aws_cloudfront_invalidation" "frontend" {
-  distribution_id = aws_cloudfront_distribution.frontend.id
-  paths           = ["/*"]
+resource "null_resource" "cloudfront_invalidation" {
+  triggers = {
+    config_js_content = local_file.config_js.content_md5
+    frontend_files    = join(",", [for k, v in aws_s3_object.frontend_files : v.etag])
+  }
+
+  provisioner "local-exec" {
+    command = "aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.frontend.id} --paths '/*'"
+  }
 
   depends_on = [
     aws_s3_object.frontend_files,
