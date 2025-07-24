@@ -174,18 +174,65 @@ resource "aws_cloudfront_distribution" "frontend" {
 }
 
 # ===================================
+# GERAR ARQUIVO DE CONFIGURAÇÃO
+# ===================================
+
+resource "local_file" "config_js" {
+  content = templatefile("${path.module}/config.js_template.js", {
+    api_gateway_url      = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
+    cognito_region       = data.terraform_remote_state.infrastructure.outputs.cognito_region
+    cognito_user_pool_id = data.terraform_remote_state.infrastructure.outputs.cognito_user_pool_id
+    cognito_client_id    = data.terraform_remote_state.infrastructure.outputs.cognito_client_id
+    cognito_domain       = "${data.terraform_remote_state.infrastructure.outputs.cognito_domain}.auth.${data.terraform_remote_state.infrastructure.outputs.cognito_region}.amazoncognito.com"
+    websocket_url        = data.terraform_remote_state.websocket.outputs.websocket_stage_url
+    environment          = var.environment
+  })
+  filename = "${path.module}/generated/config.js"
+}
+
+# ===================================
 # UPLOAD DOS ARQUIVOS ESTÁTICOS
 # ===================================
 
+# Primeiro, copiar arquivos originais
 resource "aws_s3_object" "frontend_files" {
-  for_each = fileset("${path.module}/src", "**/*")
+  for_each = fileset("${path.module}/../frontend/src", "**/*")
 
   bucket       = aws_s3_bucket.frontend.id
   key          = each.value
-  source       = "${path.module}/src/${each.value}"
-  etag         = filemd5("${path.module}/src/${each.value}")
+  source       = "${path.module}/../frontend/src/${each.value}"
+  etag         = filemd5("${path.module}/../frontend/src/${each.value}")
   content_type = lookup(local.mime_types, regex("\\.[^.]+$", each.value), "application/octet-stream")
 }
+
+# Depois, fazer upload do config.js gerado
+resource "aws_s3_object" "config_js" {
+  bucket       = aws_s3_bucket.frontend.id
+  key          = "js/config.js"
+  source       = local_file.config_js.filename
+  etag         = local_file.config_js.content_md5
+  content_type = "application/javascript"
+
+  depends_on = [local_file.config_js]
+}
+
+# ===================================
+# INVALIDAÇÃO DO CLOUDFRONT
+# ===================================
+
+resource "aws_cloudfront_invalidation" "frontend" {
+  distribution_id = aws_cloudfront_distribution.frontend.id
+  paths           = ["/*"]
+
+  depends_on = [
+    aws_s3_object.frontend_files,
+    aws_s3_object.config_js
+  ]
+}
+
+# ===================================
+# LOCALS
+# ===================================
 
 locals {
   mime_types = {
@@ -203,30 +250,3 @@ locals {
     ".woff2" = "font/woff2"
   }
 }
-
-# # Adicionar no main.tf do frontend
-
-# # Template do arquivo de configuração
-# resource "local_file" "config_js" {
-#   content = templatefile("${path.module}/config.js.tpl", {
-#     api_gateway_url      = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
-#     cognito_region       = data.terraform_remote_state.infrastructure.outputs.cognito_region
-#     cognito_user_pool_id = data.terraform_remote_state.infrastructure.outputs.cognito_user_pool_id
-#     cognito_client_id    = data.terraform_remote_state.infrastructure.outputs.cognito_client_id
-#     cognito_domain       = "${data.terraform_remote_state.infrastructure.outputs.cognito_domain}.auth.${data.terraform_remote_state.infrastructure.outputs.cognito_region}.amazoncognito.com"
-#     websocket_url        = data.terraform_remote_state.websocket.outputs.websocket_stage_url
-#     environment          = var.environment
-#   })
-#   filename = "${path.module}/src/js/config.js"
-# }
-
-# # Upload do config.js para S3
-# resource "aws_s3_object" "config_js" {
-#   bucket       = aws_s3_bucket.frontend.id
-#   key          = "js/config.js"
-#   source       = local_file.config_js.filename
-#   etag         = local_file.config_js.content_md5
-#   content_type = "application/javascript"
-
-#   depends_on = [local_file.config_js]
-# }
