@@ -178,7 +178,7 @@ resource "aws_cloudfront_distribution" "frontend" {
 # ===================================
 
 resource "local_file" "config_js" {
-  content = templatefile("${path.module}/config.js_template.js", {
+  content = templatefile("${path.module}/config.js.tpl", {
     api_gateway_url      = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
     cognito_region       = data.terraform_remote_state.infrastructure.outputs.cognito_region
     cognito_user_pool_id = data.terraform_remote_state.infrastructure.outputs.cognito_user_pool_id
