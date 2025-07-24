@@ -20,7 +20,7 @@ data "terraform_remote_state" "websocket" {
   backend = "s3"
   config = {
     bucket = "example-aws-terraform-terraform-state"
-    key    = "websocket/terraform.tfstate"
+    key    = "websocket-infrastructure/terraform.tfstate"
     region = var.aws_region
   }
 }
