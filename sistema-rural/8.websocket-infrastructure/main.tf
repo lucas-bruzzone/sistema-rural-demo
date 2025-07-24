@@ -95,11 +95,10 @@ resource "aws_apigatewayv2_route_response" "unsubscribe" {
 # ===================================
 
 resource "aws_apigatewayv2_authorizer" "websocket_auth" {
-  api_id                           = aws_apigatewayv2_api.websocket.id
-  authorizer_type                  = "REQUEST"
-  authorizer_uri                   = data.terraform_remote_state.lambda_authorizer.outputs.lambda_invoke_arn
-  name                             = "${var.project_name}-websocket-authorizer"
-  authorizer_result_ttl_in_seconds = 300
+  api_id          = aws_apigatewayv2_api.websocket.id
+  authorizer_type = "REQUEST"
+  authorizer_uri  = data.terraform_remote_state.lambda_authorizer.outputs.lambda_invoke_arn
+  name            = "${var.project_name}-websocket-authorizer"
 
   identity_sources = [
     "route.request.querystring.token"
