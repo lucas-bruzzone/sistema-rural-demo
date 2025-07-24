@@ -22,7 +22,7 @@ variable "default_tags" {
   default = {
     Project     = "sistema-rural"
     Environment = "devops"
-    Module      = "frontend"
+    Module      = "frontend-infrastructure"
     ManagedBy   = "terraform"
   }
 }

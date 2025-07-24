@@ -78,7 +78,7 @@ jobs:
           lambda-handle-events:
             - 'sistema-rural/9.lambda-handle-events/**'
           frontend:
-            - 'sistema-rural/frontend/**'
+            - 'sistema-rural/10.frontend-infrastructure/**'
 
   # 1. Infrastructure Base
   deploy-infrastructure:
@@ -446,13 +446,13 @@ jobs:
 
     - name: Terraform Frontend
       run: |
-        cd sistema-rural/frontend
+        cd sistema-rural/10.frontend-infrastructure
         terraform init
         terraform validate
-        terraform plan -var-file="../1.infrastructure/tfvars/devops.tfvars" -no-color
+        terraform plan -var-file="tfvars/devops.tfvars" -no-color
         
         if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
-          terraform apply -var-file="../1.infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+          terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
   # Summary
