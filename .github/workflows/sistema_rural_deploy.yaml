@@ -32,7 +32,9 @@ jobs:
       lambda-analysis-lambda: ${{ steps.changes.outputs.lambda-analysis-lambda }}
       lambda-authorizer: ${{ steps.changes.outputs.lambda-authorizer }}
       api-gateway: ${{ steps.changes.outputs.api-gateway }}
-      websocket: ${{ steps.changes.outputs.websocket }}
+      websocket-infrastructure: ${{ steps.changes.outputs.websocket-infrastructure }}
+      lambda-handle-websocket: ${{ steps.changes.outputs.lambda-handle-websocket }}
+      lambda-handle-events: ${{ steps.changes.outputs.lambda-handle-events }}
       frontend: ${{ steps.changes.outputs.frontend }}
       deploy-all: ${{ steps.deploy-all.outputs.result }}
     
@@ -69,8 +71,12 @@ jobs:
             - 'sistema-rural/5.lambda-analysis/**'
           api-gateway:
             - 'sistema-rural/6.api-gateway/**'
-          websocket:
-            - 'sistema-rural/websocket/**'
+          websocket-infrastructure:
+            - 'sistema-rural/7.websocket-infrastructure/**'
+          lambda-handle-websocket:
+            - 'sistema-rural/8.lambda-handle-websocket/**'
+          lambda-handle-events:
+            - 'sistema-rural/9.lambda-handle-events/**'
           frontend:
             - 'sistema-rural/frontend/**'
 
@@ -298,15 +304,15 @@ jobs:
           terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
-  # 7. WebSocket
-  deploy-websocket:
-    name: 'Deploy WebSocket'
+  # 7. WebSocket Infrastructure
+  deploy-websocket-infrastructure:
+    name: 'Deploy WebSocket Infrastructure'
     runs-on: ubuntu-latest
     needs: [detect-changes, deploy-lambda-authorizer]
     if: |
       always() && !failure() && !cancelled() && (
         needs.detect-changes.outputs.deploy-all == 'true' || 
-        needs.detect-changes.outputs.websocket == 'true'
+        needs.detect-changes.outputs.websocket-infrastructure == 'true'
       )
     
     steps:
@@ -322,22 +328,102 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
-    - name: Terraform WebSocket
+    - name: Terraform WebSocket Infrastructure
       run: |
-        cd sistema-rural/websocket
+        cd sistema-rural/7.websocket-infrastructure
         terraform init
         terraform validate
-        terraform plan -var-file="../infrastructure/tfvars/devops.tfvars" -no-color
+        terraform plan -var-file="tfvars/devops.tfvars" -no-color
         
         if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
-          terraform apply -var-file="../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+          terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
-  # 8. Frontend
+  # 8. Lambda Handle WebSocket
+  deploy-lambda-handle-websocket:
+    name: 'Deploy Lambda Handle WebSocket'
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-infrastructure]
+    if: |
+      always() && !failure() && !cancelled() && (
+        needs.detect-changes.outputs.deploy-all == 'true' || 
+        needs.detect-changes.outputs.lambda-handle-websocket == 'true'
+      )
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Lambda Handle WebSocket
+      run: |
+        cd sistema-rural/8.lambda-handle-websocket/terraform
+        terraform init
+        terraform validate
+        terraform plan -var-file="tfvars/devops.tfvars" -no-color
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
+        fi
+
+  # 9. Lambda Handle Events
+  deploy-lambda-handle-events:
+    name: 'Deploy Lambda Handle Events'
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-websocket-infrastructure]
+    if: |
+      always() && !failure() && !cancelled() && (
+        needs.detect-changes.outputs.deploy-all == 'true' || 
+        needs.detect-changes.outputs.lambda-handle-events == 'true'
+      )
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Lambda Handle Events
+      run: |
+        cd sistema-rural/9.lambda-handle-events/terraform
+        terraform init
+        terraform validate
+        terraform plan -var-file="tfvars/devops.tfvars" -no-color
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
+        fi
+
+  # 10. Frontend
   deploy-frontend:
     name: 'Deploy Frontend'
     runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-api-gateway, deploy-websocket]
+    needs: [detect-changes, deploy-api-gateway, deploy-websocket-infrastructure]
     if: |
       always() && !failure() && !cancelled() && (
         needs.detect-changes.outputs.deploy-all == 'true' || 
@@ -362,10 +448,10 @@ jobs:
         cd sistema-rural/frontend
         terraform init
         terraform validate
-        terraform plan -var-file="../infrastructure/tfvars/devops.tfvars" -no-color
+        terraform plan -var-file="../1.infrastructure/tfvars/devops.tfvars" -no-color
         
         if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
-          terraform apply -var-file="../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+          terraform apply -var-file="../1.infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
   # Summary
@@ -379,7 +465,9 @@ jobs:
       deploy-lambda-analysis-infra,
       deploy-lambda-analysis,
       deploy-api-gateway, 
-      deploy-websocket, 
+      deploy-websocket-infrastructure,
+      deploy-lambda-handle-websocket,
+      deploy-lambda-handle-events,
       deploy-frontend
     ]
     if: always()
@@ -396,5 +484,7 @@ jobs:
         echo "| Lambda Analysis Infra | ${{ needs.deploy-lambda-analysis-infra.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Lambda Analysis | ${{ needs.deploy-lambda-analysis.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| API Gateway | ${{ needs.deploy-api-gateway.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| WebSocket | ${{ needs.deploy-websocket.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| WebSocket Infrastructure | ${{ needs.deploy-websocket-infrastructure.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Lambda Handle WebSocket | ${{ needs.deploy-lambda-handle-websocket.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Lambda Handle Events | ${{ needs.deploy-lambda-handle-events.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Frontend | ${{ needs.deploy-frontend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY

@@ -6,15 +6,19 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    archive = {
-      source  = "hashicorp/archive"
-      version = "~> 2.0"
-    }
   }
 
   backend "s3" {
     bucket = "example-aws-terraform-terraform-state"
-    key    = "websocket/terraform.tfstate"
+    key    = "lambda-handle-events/terraform.tfstate"
     region = "us-east-1"
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = var.default_tags
   }
 }

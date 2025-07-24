@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone, timedelta
 from boto3.dynamodb.conditions import Key
 
-# Clientes AWS
+# AWS clients
 dynamodb = boto3.resource("dynamodb")
 connections_table = dynamodb.Table(os.environ["WEBSOCKET_TABLE"])
 
@@ -164,59 +164,3 @@ def send_message(apigateway, connection_id, message):
         print(f"Conexão morta removida: {connection_id}")
     except Exception as e:
         print(f"Erro ao enviar mensagem: {str(e)}")
-
-
-# ===================================
-# FUNÇÃO PARA BROADCAST (usar em outras lambdas)
-# ===================================
-
-
-def broadcast_to_topic(topic, message, user_id=None):
-    """
-    Função para fazer broadcast para um tópico específico
-    Pode ser chamada por outras lambdas (ex: lambda-analysis)
-    """
-    try:
-        # Buscar todas as conexões subscritas no tópico
-        scan_response = connections_table.scan()
-
-        # Filtrar conexões que têm o tópico nas subscrições
-        target_connections = []
-        for item in scan_response["Items"]:
-            subscriptions = item.get("subscriptions", [])
-            if topic in subscriptions:
-                # Se user_id específico, filtrar por usuário
-                if user_id is None or item.get("userId") == user_id:
-                    target_connections.append(item["connectionId"])
-
-        if not target_connections:
-            print(f"Nenhuma conexão encontrada para tópico: {topic}")
-            return
-
-        # Enviar mensagem para todas as conexões
-        apigateway = boto3.client(
-            "apigatewaymanagementapi",
-            endpoint_url=f"https://{os.environ['API_GATEWAY_ENDPOINT']}",
-        )
-
-        for connection_id in target_connections:
-            try:
-                apigateway.post_to_connection(
-                    ConnectionId=connection_id,
-                    Data=json.dumps(
-                        {
-                            "type": "notification",
-                            "topic": topic,
-                            "data": message,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                        }
-                    ),
-                )
-                print(f"Mensagem enviada para {connection_id}")
-            except Exception as e:
-                print(f"Erro ao enviar para {connection_id}: {str(e)}")
-                # Remover conexão inválida
-                connections_table.delete_item(Key={"connectionId": connection_id})
-
-    except Exception as e:
-        print(f"Erro no broadcast: {str(e)}")

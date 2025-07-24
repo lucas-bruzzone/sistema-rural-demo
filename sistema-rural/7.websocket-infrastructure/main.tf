@@ -14,10 +14,7 @@ resource "aws_apigatewayv2_api" "websocket" {
     allow_headers     = ["*"]
   }
 
-  tags = {
-    Name = "${var.project_name}-websocket-api"
-    Type = "websocket"
-  }
+  tags = var.default_tags
 }
 
 # ===================================
@@ -29,7 +26,7 @@ resource "aws_apigatewayv2_route" "connect" {
   api_id    = aws_apigatewayv2_api.websocket.id
   route_key = "$connect"
   target    = "integrations/${aws_apigatewayv2_integration.websocket_handler.id}"
-  
+
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.websocket_auth.id
 }
@@ -55,15 +52,21 @@ resource "aws_apigatewayv2_route" "unsubscribe" {
   target    = "integrations/${aws_apigatewayv2_integration.websocket_handler.id}"
 }
 
+# OPTIONS for CORS
+resource "aws_apigatewayv2_route" "options" {
+  api_id    = aws_apigatewayv2_api.websocket.id
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.websocket_handler.id}"
+}
+
 # ===================================
-# WEBSOCKET INTEGRATIONS (UMA LAMBDA PARA TUDO)
+# WEBSOCKET INTEGRATIONS
 # ===================================
 
-# Única integração para todas as rotas
 resource "aws_apigatewayv2_integration" "websocket_handler" {
   api_id           = aws_apigatewayv2_api.websocket.id
   integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.websocket_handler.invoke_arn
+  integration_uri  = data.terraform_remote_state.lambda_websocket.outputs.lambda_invoke_arn
 }
 
 # ===================================
@@ -95,102 +98,19 @@ resource "aws_apigatewayv2_route_response" "unsubscribe" {
 }
 
 # ===================================
-# LAMBDA FUNCTION
+# AUTHORIZER
 # ===================================
 
-# ZIP do código da lambda
-data "archive_file" "websocket_handler" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda-websocket"
-  output_path = "${path.module}/websocket-handler.zip"
-}
+resource "aws_apigatewayv2_authorizer" "websocket_auth" {
+  api_id                           = aws_apigatewayv2_api.websocket.id
+  authorizer_type                  = "REQUEST"
+  authorizer_uri                   = data.terraform_remote_state.lambda_authorizer.outputs.lambda_invoke_arn
+  name                             = "${var.project_name}-websocket-authorizer"
+  authorizer_result_ttl_in_seconds = 300
 
-# Lambda Function
-resource "aws_lambda_function" "websocket_handler" {
-  filename         = data.archive_file.websocket_handler.output_path
-  function_name    = "${var.project_name}-websocket-handler"
-  role            = aws_iam_role.websocket_lambda_role.arn
-  handler         = "lambda_function.lambda_handler"
-  runtime         = "python3.9"
-  timeout         = 30
-
-  source_code_hash = data.archive_file.websocket_handler.output_base64sha256
-
-  environment {
-    variables = {
-      WEBSOCKET_TABLE      = data.terraform_remote_state.infrastructure.outputs.websocket_connections_table_name
-      API_GATEWAY_ENDPOINT = "${aws_apigatewayv2_api.websocket.id}.execute-api.${var.aws_region}.amazonaws.com/${var.environment}"
-    }
-  }
-
-  tags = var.default_tags
-}
-
-# CloudWatch Log Group para Lambda
-resource "aws_cloudwatch_log_group" "websocket_lambda_logs" {
-  name              = "/aws/lambda/${aws_lambda_function.websocket_handler.function_name}"
-  retention_in_days = 7
-  tags             = var.default_tags
-}
-
-# ===================================
-# IAM ROLE E POLICIES PARA LAMBDA  
-# ===================================
-
-resource "aws_iam_role" "websocket_lambda_role" {
-  name = "${var.project_name}-websocket-lambda-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = var.default_tags
-}
-
-# Policy básica para Lambda
-resource "aws_iam_role_policy_attachment" "websocket_lambda_basic" {
-  role       = aws_iam_role.websocket_lambda_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-# Policy customizada para DynamoDB e API Gateway
-resource "aws_iam_role_policy" "websocket_lambda_custom" {
-  name = "${var.project_name}-websocket-lambda-policy"
-  role = aws_iam_role.websocket_lambda_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:Scan",
-          "dynamodb:Query"
-        ]
-        Resource = data.terraform_remote_state.infrastructure.outputs.websocket_connections_table_arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "execute-api:ManageConnections"
-        ]
-        Resource = "${aws_apigatewayv2_api.websocket.execution_arn}/*/*"
-      }
-    ]
-  })
+  identity_sources = [
+    "route.request.querystring.token"
+  ]
 }
 
 # ===================================
@@ -206,21 +126,6 @@ resource "aws_apigatewayv2_deployment" "websocket" {
     aws_apigatewayv2_route.subscribe,
     aws_apigatewayv2_route.unsubscribe,
     aws_apigatewayv2_integration.websocket_handler
-# ===================================
-# AUTHORIZER
-# ===================================
-
-resource "aws_apigatewayv2_authorizer" "websocket_auth" {
-  api_id                            = aws_apigatewayv2_api.websocket.id
-  authorizer_type                   = "REQUEST"
-  authorizer_uri                    = data.terraform_remote_state.lambda_authorizer.outputs.lambda_invoke_arn
-  name                              = "${var.project_name}-websocket-authorizer"
-  authorizer_result_ttl_in_seconds  = 300
-
-  identity_sources = [
-    "route.request.querystring.token"
-  ]
-}
   ]
 
   lifecycle {
@@ -257,9 +162,7 @@ resource "aws_apigatewayv2_stage" "websocket" {
     })
   }
 
-  tags = {
-    Name = "${var.project_name}-websocket-stage"
-  }
+  tags = var.default_tags
 }
 
 # ===================================
@@ -269,30 +172,21 @@ resource "aws_apigatewayv2_stage" "websocket" {
 resource "aws_cloudwatch_log_group" "websocket_api_logs" {
   name              = "/aws/apigateway/${var.project_name}-websocket-api"
   retention_in_days = 7
-
-  tags = {
-    Name = "${var.project_name}-websocket-api-logs"
-  }
+  tags              = var.default_tags
 }
 
 # ===================================
 # LAMBDA PERMISSIONS
 # ===================================
 
-# ===================================
-# LAMBDA PERMISSIONS
-# ===================================
-
-# Permissão única para a lambda ser invocada pelo API Gateway
 resource "aws_lambda_permission" "websocket_handler" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.websocket_handler.function_name
+  function_name = data.terraform_remote_state.lambda_websocket.outputs.lambda_function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.websocket.execution_arn}/*/*"
 }
 
-# Permissão para o authorizer
 resource "aws_lambda_permission" "authorizer" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"

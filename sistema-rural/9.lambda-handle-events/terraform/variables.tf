@@ -1,7 +1,3 @@
-# ===================================
-# PROJECT VARIABLES
-# ===================================
-
 variable "project_name" {
   description = "Nome do projeto"
   type        = string
@@ -9,7 +5,7 @@ variable "project_name" {
 }
 
 variable "environment" {
-  description = "Ambiente (dev, prod)"
+  description = "Ambiente"
   type        = string
   default     = "devops"
 }
@@ -20,23 +16,13 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "frontend_domain" {
-  description = "Domínio do frontend para CORS"
-  type        = string
-  default     = "localhost:3000"
-}
-
-# ===================================
-# TAGS PADRÃO
-# ===================================
-
 variable "default_tags" {
-  description = "Tags padrão para recursos"
+  description = "Tags padrão"
   type        = map(string)
   default = {
     Project     = "sistema-rural"
     Environment = "devops"
-    Module      = "websocket"
+    Module      = "lambda-handle-events"
     ManagedBy   = "terraform"
   }
 }

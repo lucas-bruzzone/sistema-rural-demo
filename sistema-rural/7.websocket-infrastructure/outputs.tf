@@ -1,7 +1,3 @@
-# ===================================
-# WEBSOCKET API OUTPUTS
-# ===================================
-
 output "websocket_api_id" {
   description = "ID da API WebSocket"
   value       = aws_apigatewayv2_api.websocket.id
@@ -27,12 +23,8 @@ output "websocket_execution_arn" {
   value       = aws_apigatewayv2_api.websocket.execution_arn
 }
 
-# ===================================
-# SUMMARY OUTPUT
-# ===================================
-
 output "websocket_summary" {
-  description = "Resumo do módulo WebSocket"
+  description = "Resumo do módulo WebSocket Infrastructure"
   value = {
     api_id      = aws_apigatewayv2_api.websocket.id
     endpoint    = aws_apigatewayv2_api.websocket.api_endpoint
