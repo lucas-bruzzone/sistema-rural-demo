@@ -64,9 +64,9 @@ jobs:
           lambda-crud:
             - 'sistema-rural/3.lambda-crud/**'
           lambda-analysis-infra:
-            - 'sistema-rural/lambda-analysis/infrastructure/**'
+            - 'sistema-rural/4.infrastructure-analysis/**'
           lambda-analysis-lambda:
-            - 'sistema-rural/lambda-analysis/lambda/**'
+            - 'sistema-rural/5.lambda-analysis**'
           api-gateway:
             - 'sistema-rural/api-gateway/**'
           websocket:
@@ -214,13 +214,13 @@ jobs:
 
     - name: Terraform Lambda Analysis Infrastructure
       run: |
-        cd sistema-rural/lambda-analysis/infrastructure
+        cd sistema-rural/4.infrastructure-analysis
         terraform init
         terraform validate
-        terraform plan -var-file="../../infrastructure/tfvars/devops.tfvars" -no-color
+        terraform plan -var-file="tfvars/devops.tfvars" -no-color
         
         if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
-          terraform apply -var-file="../../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+          terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
   # 5. Lambda Analysis Function
@@ -254,13 +254,13 @@ jobs:
 
     - name: Terraform Lambda Analysis Function
       run: |
-        cd sistema-rural/lambda-analysis/lambda/terraform
+        cd sistema-rural/5.lambda-analysisterraform
         terraform init
         terraform validate
-        terraform plan -var-file="../../../infrastructure/tfvars/devops.tfvars" -no-color
+        terraform plan -var-file="tfvars/devops.tfvars" -no-color
         
         if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
-          terraform apply -var-file="../../../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+          terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
   # 6. API Gateway
