@@ -10,25 +10,8 @@ on:
       deploy_all:
         description: 'Force deploy all modules'
         required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-      target_module:
-        description: 'Deploy specific module only'
-        required: false
-        default: 'all'
-        type: choice
-        options:
-          - 'all'
-          - 'infrastructure'
-          - 'lambda-crud'
-          - 'lambda-analysis'
-          - 'lambda-authorizer'
-          - 'api-gateway'
-          - 'websocket'
-          - 'frontend'
+        default: false
+        type: boolean
 
 permissions:
   id-token: write
@@ -62,7 +45,7 @@ jobs:
     - name: Check if deploy all
       id: deploy-all
       run: |
-        if [[ "${{ github.event.inputs.deploy_all }}" == "true" ]] || [[ "${{ github.event.inputs.target_module }}" != "all" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+        if [[ "${{ github.event.inputs.deploy_all }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           echo "result=true" >> $GITHUB_OUTPUT
         else
           echo "result=false" >> $GITHUB_OUTPUT
@@ -75,7 +58,7 @@ jobs:
       with:
         filters: |
           infrastructure:
-            - 'sistema-rural/infrastructure/**'
+            - 'sistema-rural/1.infrastructure/**'
           lambda-crud:
             - 'sistema-rural/lambda-crud/**'
           lambda-analysis-infra:
@@ -91,15 +74,14 @@ jobs:
           frontend:
             - 'sistema-rural/frontend/**'
 
-  # Etapa 1: Infraestrutura Base
+  # 1. Infrastructure Base
   deploy-infrastructure:
     name: 'Deploy Infrastructure'
     runs-on: ubuntu-latest
     needs: [detect-changes]
     if: |
       needs.detect-changes.outputs.deploy-all == 'true' || 
-      needs.detect-changes.outputs.infrastructure == 'true' ||
-      github.event.inputs.target_module == 'infrastructure'
+      needs.detect-changes.outputs.infrastructure == 'true'
     
     steps:
     - name: Checkout
@@ -114,117 +96,26 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
-    - name: Terraform Init - Infrastructure
+    - name: Terraform Infrastructure
       run: |
-        cd sistema-rural/infrastructure
+        cd sistema-rural/1.infrastructure
         terraform init
-
-    - name: Terraform Validate - Infrastructure
-      run: |
-        cd sistema-rural/infrastructure
         terraform validate
-
-    - name: Terraform Plan - Infrastructure
-      run: |
-        cd sistema-rural/infrastructure
         terraform plan -var-file="tfvars/devops.tfvars" -no-color
-
-    - name: Terraform Apply - Infrastructure
-      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-      run: |
-        cd sistema-rural/infrastructure
-        terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
-
-  # Etapa 2: Lambdas (paralelo onde possível)
-  deploy-lambdas:
-    name: 'Deploy Lambdas'
-    runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-infrastructure]
-    if: always() && !failure() && !cancelled()
-    strategy:
-      matrix:
-        include:
-          - name: lambda-authorizer
-            path: sistema-rural/lambda-authorizer/terraform
-            condition: |
-              needs.detect-changes.outputs.deploy-all == 'true' || 
-              needs.detect-changes.outputs.lambda-authorizer == 'true' ||
-              github.event.inputs.target_module == 'lambda-authorizer'
-          - name: lambda-crud
-            path: sistema-rural/lambda-crud/terraform
-            condition: |
-              needs.detect-changes.outputs.deploy-all == 'true' || 
-              needs.detect-changes.outputs.lambda-crud == 'true' ||
-              github.event.inputs.target_module == 'lambda-crud'
-          - name: lambda-analysis-infra
-            path: sistema-rural/lambda-analysis/infrastructure
-            condition: |
-              needs.detect-changes.outputs.deploy-all == 'true' || 
-              needs.detect-changes.outputs.lambda-analysis-infra == 'true' ||
-              github.event.inputs.target_module == 'lambda-analysis'
-      fail-fast: false
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Setup Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
-
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-
-    - name: Check if should deploy
-      id: should-deploy
-      run: |
-        if [[ "${{ matrix.condition }}" == "true" ]]; then
-          echo "deploy=true" >> $GITHUB_OUTPUT
-        else
-          echo "deploy=false" >> $GITHUB_OUTPUT
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
-    - name: Terraform Init - ${{ matrix.name }}
-      if: steps.should-deploy.outputs.deploy == 'true'
-      run: |
-        cd ${{ matrix.path }}
-        terraform init
-
-    - name: Terraform Validate - ${{ matrix.name }}
-      if: steps.should-deploy.outputs.deploy == 'true'
-      run: |
-        cd ${{ matrix.path }}
-        terraform validate
-
-    - name: Terraform Plan - ${{ matrix.name }}
-      if: steps.should-deploy.outputs.deploy == 'true'
-      run: |
-        cd ${{ matrix.path }}
-        terraform plan -var-file="tfvars/devops.tfvars" -no-color
-
-    - name: Terraform Apply - ${{ matrix.name }}
-      if: steps.should-deploy.outputs.deploy == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-      run: |
-        cd ${{ matrix.path }}
-        terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
-
-  # Etapa 3: Lambda Analysis (depende da infra da analysis)
-  deploy-lambda-analysis:
-    name: 'Deploy Lambda Analysis'
+  # 2. Lambda Authorizer
+  deploy-lambda-authorizer:
+    name: 'Deploy Lambda Authorizer'
     runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-lambdas]
+    needs: [detect-changes, deploy-infrastructure]
     if: |
       always() && !failure() && !cancelled() && (
         needs.detect-changes.outputs.deploy-all == 'true' || 
-        needs.detect-changes.outputs.lambda-analysis-lambda == 'true' ||
-        github.event.inputs.target_module == 'lambda-analysis'
+        needs.detect-changes.outputs.lambda-authorizer == 'true'
       )
     
     steps:
@@ -245,49 +136,68 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
-    - name: Terraform Init - Lambda Analysis
+    - name: Terraform Lambda Authorizer
       run: |
-        cd sistema-rural/lambda-analysis/lambda/terraform
+        cd sistema-rural/lambda-authorizer/terraform
         terraform init
-
-    - name: Terraform Validate - Lambda Analysis
-      run: |
-        cd sistema-rural/lambda-analysis/lambda/terraform
         terraform validate
+        terraform plan -var-file="../../infrastructure/tfvars/devops.tfvars" -no-color
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="../../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+        fi
 
-    - name: Terraform Plan - Lambda Analysis
-      run: |
-        cd sistema-rural/lambda-analysis/lambda/terraform
-        terraform plan -var-file="tfvars/devops.tfvars" -no-color
-
-    - name: Terraform Apply - Lambda Analysis
-      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-      run: |
-        cd sistema-rural/lambda-analysis/lambda/terraform
-        terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
-
-  # Etapa 4: APIs (dependem das lambdas)
-  deploy-apis:
-    name: 'Deploy APIs'
+  # 3. Lambda CRUD
+  deploy-lambda-crud:
+    name: 'Deploy Lambda CRUD'
     runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-lambdas, deploy-lambda-analysis]
-    if: always() && !failure() && !cancelled()
-    strategy:
-      matrix:
-        include:
-          - name: api-gateway
-            path: sistema-rural/api-gateway
-            condition: |
-              needs.detect-changes.outputs.deploy-all == 'true' || 
-              needs.detect-changes.outputs.api-gateway == 'true' ||
-              github.event.inputs.target_module == 'api-gateway'
-          - name: websocket
-            path: sistema-rural/websocket
-            condition: |
-              needs.detect-changes.outputs.deploy-all == 'true' || 
-              needs.detect-changes.outputs.websocket == 'true' ||
-              github.event.inputs.target_module == 'websocket'
-      fail-fast: false
+    needs: [detect-changes, deploy-infrastructure]
+    if: |
+      always() && !failure() && !cancelled() && (
+        needs.detect-changes.outputs.deploy-all == 'true' || 
+        needs.detect-changes.outputs.lambda-crud == 'true'
+      )
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Lambda CRUD
+      run: |
+        cd sistema-rural/lambda-crud/terraform
+        terraform init
+        terraform validate
+        terraform plan -var-file="../../infrastructure/tfvars/devops.tfvars" -no-color
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="../../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+        fi
+
+  # 4. Lambda Analysis Infrastructure
+  deploy-lambda-analysis-infra:
+    name: 'Deploy Lambda Analysis Infrastructure'
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-infrastructure]
+    if: |
+      always() && !failure() && !cancelled() && (
+        needs.detect-changes.outputs.deploy-all == 'true' || 
+        needs.detect-changes.outputs.lambda-analysis-infra == 'true' ||
+        needs.detect-changes.outputs.lambda-analysis-lambda == 'true'
+      )
     
     steps:
     - name: Checkout
@@ -302,49 +212,136 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
-    - name: Check if should deploy
-      id: should-deploy
+    - name: Terraform Lambda Analysis Infrastructure
       run: |
-        if [[ "${{ matrix.condition }}" == "true" ]]; then
-          echo "deploy=true" >> $GITHUB_OUTPUT
-        else
-          echo "deploy=false" >> $GITHUB_OUTPUT
+        cd sistema-rural/lambda-analysis/infrastructure
+        terraform init
+        terraform validate
+        terraform plan -var-file="../../infrastructure/tfvars/devops.tfvars" -no-color
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="../../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
-    - name: Terraform Init - ${{ matrix.name }}
-      if: steps.should-deploy.outputs.deploy == 'true'
+  # 5. Lambda Analysis Function
+  deploy-lambda-analysis:
+    name: 'Deploy Lambda Analysis Function'
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-lambda-analysis-infra]
+    if: |
+      always() && !failure() && !cancelled() && (
+        needs.detect-changes.outputs.deploy-all == 'true' || 
+        needs.detect-changes.outputs.lambda-analysis-lambda == 'true'
+      )
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Lambda Analysis Function
       run: |
-        cd ${{ matrix.path }}
+        cd sistema-rural/lambda-analysis/lambda/terraform
         terraform init
-
-    - name: Terraform Validate - ${{ matrix.name }}
-      if: steps.should-deploy.outputs.deploy == 'true'
-      run: |
-        cd ${{ matrix.path }}
         terraform validate
+        terraform plan -var-file="../../../infrastructure/tfvars/devops.tfvars" -no-color
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="../../../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+        fi
 
-    - name: Terraform Plan - ${{ matrix.name }}
-      if: steps.should-deploy.outputs.deploy == 'true'
+  # 6. API Gateway
+  deploy-api-gateway:
+    name: 'Deploy API Gateway'
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-lambda-crud, deploy-lambda-authorizer]
+    if: |
+      always() && !failure() && !cancelled() && (
+        needs.detect-changes.outputs.deploy-all == 'true' || 
+        needs.detect-changes.outputs.api-gateway == 'true'
+      )
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform API Gateway
       run: |
-        cd ${{ matrix.path }}
-        terraform plan -var-file="tfvars/devops.tfvars" -no-color
+        cd sistema-rural/api-gateway
+        terraform init
+        terraform validate
+        terraform plan -var-file="../infrastructure/tfvars/devops.tfvars" -no-color
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+        fi
 
-    - name: Terraform Apply - ${{ matrix.name }}
-      if: steps.should-deploy.outputs.deploy == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+  # 7. WebSocket
+  deploy-websocket:
+    name: 'Deploy WebSocket'
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-lambda-authorizer]
+    if: |
+      always() && !failure() && !cancelled() && (
+        needs.detect-changes.outputs.deploy-all == 'true' || 
+        needs.detect-changes.outputs.websocket == 'true'
+      )
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform WebSocket
       run: |
-        cd ${{ matrix.path }}
-        terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
+        cd sistema-rural/websocket
+        terraform init
+        terraform validate
+        terraform plan -var-file="../infrastructure/tfvars/devops.tfvars" -no-color
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+        fi
 
-  # Etapa 5: Frontend (depende das APIs)
+  # 8. Frontend
   deploy-frontend:
     name: 'Deploy Frontend'
     runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-apis]
+    needs: [detect-changes, deploy-api-gateway, deploy-websocket]
     if: |
       always() && !failure() && !cancelled() && (
         needs.detect-changes.outputs.deploy-all == 'true' || 
-        needs.detect-changes.outputs.frontend == 'true' ||
-        github.event.inputs.target_module == 'frontend'
+        needs.detect-changes.outputs.frontend == 'true'
       )
     
     steps:
@@ -360,32 +357,31 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
-    - name: Terraform Init - Frontend
+    - name: Terraform Frontend
       run: |
         cd sistema-rural/frontend
         terraform init
-
-    - name: Terraform Validate - Frontend
-      run: |
-        cd sistema-rural/frontend
         terraform validate
+        terraform plan -var-file="../infrastructure/tfvars/devops.tfvars" -no-color
+        
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+          terraform apply -var-file="../infrastructure/tfvars/devops.tfvars" -auto-approve -no-color
+        fi
 
-    - name: Terraform Plan - Frontend
-      run: |
-        cd sistema-rural/frontend
-        terraform plan -var-file="tfvars/devops.tfvars" -no-color
-
-    - name: Terraform Apply - Frontend
-      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-      run: |
-        cd sistema-rural/frontend
-        terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
-
-  # Job de resumo
+  # Summary
   deployment-summary:
     name: 'Deployment Summary'
     runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-infrastructure, deploy-lambdas, deploy-lambda-analysis, deploy-apis, deploy-frontend]
+    needs: [
+      deploy-infrastructure, 
+      deploy-lambda-authorizer, 
+      deploy-lambda-crud, 
+      deploy-lambda-analysis-infra,
+      deploy-lambda-analysis,
+      deploy-api-gateway, 
+      deploy-websocket, 
+      deploy-frontend
+    ]
     if: always()
     
     steps:
@@ -395,9 +391,10 @@ jobs:
         echo "| Module | Status |" >> $GITHUB_STEP_SUMMARY
         echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
         echo "| Infrastructure | ${{ needs.deploy-infrastructure.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Lambda Authorizer | ${{ needs.deploy-lambdas.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Lambda CRUD | ${{ needs.deploy-lambdas.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Lambda Authorizer | ${{ needs.deploy-lambda-authorizer.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Lambda CRUD | ${{ needs.deploy-lambda-crud.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Lambda Analysis Infra | ${{ needs.deploy-lambda-analysis-infra.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Lambda Analysis | ${{ needs.deploy-lambda-analysis.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| API Gateway | ${{ needs.deploy-apis.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| WebSocket | ${{ needs.deploy-apis.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| API Gateway | ${{ needs.deploy-api-gateway.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| WebSocket | ${{ needs.deploy-websocket.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Frontend | ${{ needs.deploy-frontend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
