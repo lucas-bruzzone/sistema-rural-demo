@@ -7,13 +7,14 @@ module "lambda_geospatial" {
   layers        = [module.lambda_geospatial_layer.lambda_layer_arn]
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.11"
-  timeout       = 120 # 5 minutes
+  timeout       = 300 # 5 minutes
   memory_size   = 512
 
   create_role = false
   lambda_role = data.terraform_remote_state.analysis_infra.outputs.lambda_analysis_role_arn
 
   environment_variables = {
+    PROPERTIES_TABLE        = data.terraform_remote_state.infrastructure.outputs.properties_table_name
     PROPERTY_ANALYSIS_TABLE = data.terraform_remote_state.infrastructure.outputs.property_analysis_table_name
     GEOSPATIAL_CACHE_BUCKET = data.terraform_remote_state.analysis_infra.outputs.geospatial_cache_bucket_name
     EVENTBRIDGE_BUS_NAME    = data.terraform_remote_state.analysis_infra.outputs.property_analysis_bus_name
