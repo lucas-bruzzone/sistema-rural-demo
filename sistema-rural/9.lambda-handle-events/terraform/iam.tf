@@ -34,7 +34,10 @@ resource "aws_iam_role_policy" "lambda_events_policy" {
         Action = [
           "dynamodb:Scan",
           "dynamodb:Query",
-          "dynamodb:DeleteItem"
+          "dynamodb:DeleteItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
         ]
         Resource = [
           data.terraform_remote_state.infrastructure.outputs.websocket_connections_table_arn,
@@ -44,9 +47,21 @@ resource "aws_iam_role_policy" "lambda_events_policy" {
       {
         Effect = "Allow"
         Action = [
-          "execute-api:ManageConnections"
+          "execute-api:ManageConnections",
+          "execute-api:PostToConnection"
         ]
-        Resource = "*"
+        Resource = [
+          "${data.terraform_remote_state.websocket_infra.outputs.websocket_execution_arn}/*/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/aws/lambda/${var.project_name}-events-handler-*"
       }
     ]
   })

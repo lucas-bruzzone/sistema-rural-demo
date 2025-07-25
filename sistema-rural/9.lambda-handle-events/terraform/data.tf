@@ -15,3 +15,12 @@ data "terraform_remote_state" "websocket_infra" {
     region = var.aws_region
   }
 }
+
+data "terraform_remote_state" "analysis_infra" {
+  backend = "s3"
+  config = {
+    bucket = "example-aws-terraform-terraform-state"
+    key    = "lambda-analysis-infrastructure/terraform.tfstate"
+    region = var.aws_region
+  }
+}
