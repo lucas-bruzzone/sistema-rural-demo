@@ -2,6 +2,7 @@
 # S3 BUCKET PARA HOSTING ESTÁTICO
 # ===================================
 
+
 resource "aws_s3_bucket" "frontend" {
   bucket = "${var.project_name}-frontend-${var.environment}"
   tags   = var.default_tags

@@ -337,3 +337,95 @@ resource "aws_api_gateway_integration_response" "properties_id_options" {
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
 }
+
+# API Gateway Deployment
+resource "aws_api_gateway_deployment" "main" {
+  depends_on = [
+    aws_api_gateway_method.properties_get,
+    aws_api_gateway_method.properties_post,
+    aws_api_gateway_method.properties_id_put,
+    aws_api_gateway_method.properties_id_delete,
+    aws_api_gateway_method.properties_options,
+    aws_api_gateway_method.properties_id_options,
+    aws_api_gateway_integration.properties_get_lambda,
+    aws_api_gateway_integration.properties_post_lambda,
+    aws_api_gateway_integration.properties_id_put_lambda,
+    aws_api_gateway_integration.properties_id_delete_lambda,
+    aws_api_gateway_integration.properties_options,
+    aws_api_gateway_integration.properties_id_options,
+  ]
+
+  rest_api_id = aws_api_gateway_rest_api.main.id
+
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_resource.properties.id,
+      aws_api_gateway_resource.properties_id.id,
+      aws_api_gateway_method.properties_get.id,
+      aws_api_gateway_method.properties_post.id,
+      aws_api_gateway_method.properties_id_put.id,
+      aws_api_gateway_method.properties_id_delete.id,
+      aws_api_gateway_integration.properties_get_lambda.id,
+      aws_api_gateway_integration.properties_post_lambda.id,
+      aws_api_gateway_integration.properties_id_put_lambda.id,
+      aws_api_gateway_integration.properties_id_delete_lambda.id,
+    ]))
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# API Gateway Stage
+resource "aws_api_gateway_stage" "main" {
+  deployment_id = aws_api_gateway_deployment.main.id
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  stage_name    = var.environment
+
+  # Enable CloudWatch logs
+  xray_tracing_enabled = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_logs.arn
+    format = jsonencode({
+      requestId      = "$context.requestId"
+      ip             = "$context.identity.sourceIp"
+      caller         = "$context.identity.caller"
+      user           = "$context.identity.user"
+      requestTime    = "$context.requestTime"
+      httpMethod     = "$context.httpMethod"
+      resourcePath   = "$context.resourcePath"
+      status         = "$context.status"
+      protocol       = "$context.protocol"
+      responseLength = "$context.responseLength"
+      error          = "$context.error.message"
+      errorType      = "$context.error.messageString"
+    })
+  }
+
+  tags = {
+    Name = "${var.project_name}-api-stage"
+    Type = "api-stage"
+  }
+}
+
+# CloudWatch Log Group for API Gateway
+resource "aws_cloudwatch_log_group" "api_logs" {
+  name              = "/aws/apigateway/${var.project_name}-api"
+  retention_in_days = 7
+
+  tags = {
+    Name = "${var.project_name}-api-logs"
+    Type = "api-logs"
+  }
+}
+
+# Lambda Permissions for API Gateway
+resource "aws_lambda_permission" "api_gateway_lambda" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = data.terraform_remote_state.lambda_crud.outputs.lambda_function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
