@@ -204,13 +204,12 @@ def update_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         if not validation_result["valid"]:
             return create_response(400, {"error": validation_result["message"]})
 
-        # Check if property exists and belongs to user
-        existing_property = table.get_item(Key={"propertyId": property_id})
+        # Check if property exists and belongs to user - FIX: usar ambas as chaves
+        existing_property = table.get_item(
+            Key={"userId": user_id, "propertyId": property_id}
+        )
         if "Item" not in existing_property:
             return create_response(404, {"error": "Propriedade não encontrada"})
-
-        if existing_property["Item"]["userId"] != user_id:
-            return create_response(403, {"error": "Acesso negado"})
 
         # Update timestamp
         now = datetime.now(timezone.utc).isoformat()
@@ -220,7 +219,7 @@ def update_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             body.get("coordinates", [])
         )
 
-        # Update item
+        # Update item - FIX: usar ambas as chaves
         update_expression = "SET #name = :name, #type = :type, description = :desc, area = :area, perimeter = :perimeter, coordinates = :coords, updatedAt = :updatedAt"
         expression_attribute_names = {"#name": "name", "#type": "type"}
         expression_attribute_values = {
@@ -234,7 +233,7 @@ def update_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         }
 
         response = table.update_item(
-            Key={"propertyId": property_id},
+            Key={"userId": user_id, "propertyId": property_id},  # FIX: ambas as chaves
             UpdateExpression=update_expression,
             ExpressionAttributeNames=expression_attribute_names,
             ExpressionAttributeValues=expression_attribute_values,
@@ -264,16 +263,15 @@ def delete_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     try:
         property_id = event["pathParameters"]["id"]
 
-        # Check if property exists and belongs to user
-        existing_property = table.get_item(Key={"propertyId": property_id})
+        # Check if property exists and belongs to user - FIX: usar ambas as chaves
+        existing_property = table.get_item(
+            Key={"userId": user_id, "propertyId": property_id}
+        )
         if "Item" not in existing_property:
             return create_response(404, {"error": "Propriedade não encontrada"})
 
-        if existing_property["Item"]["userId"] != user_id:
-            return create_response(403, {"error": "Acesso negado"})
-
-        # Delete property
-        table.delete_item(Key={"propertyId": property_id})
+        # Delete property - FIX: usar ambas as chaves
+        table.delete_item(Key={"userId": user_id, "propertyId": property_id})
 
         # Publish event to EventBridge
         publish_property_event(
