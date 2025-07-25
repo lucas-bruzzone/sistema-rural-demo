@@ -1,3 +1,5 @@
+# sistema-rural/6.api-gateway/api_gateway.tf
+
 # ===================================
 # API GATEWAY REST API
 # ===================================
@@ -38,6 +40,13 @@ resource "aws_api_gateway_resource" "properties_id" {
   path_part   = "{id}"
 }
 
+# New resource for CSV import
+resource "aws_api_gateway_resource" "properties_import" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.properties.id
+  path_part   = "import"
+}
+
 # ===================================
 # METHODS
 # ===================================
@@ -55,6 +64,15 @@ resource "aws_api_gateway_method" "properties_get" {
 resource "aws_api_gateway_method" "properties_post" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.properties.id
+  http_method   = "POST"
+  authorization = "COGNITO_USER_POOLS"
+  authorizer_id = aws_api_gateway_authorizer.cognito.id
+}
+
+# POST /properties/import - NEW
+resource "aws_api_gateway_method" "properties_import_post" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.properties_import.id
   http_method   = "POST"
   authorization = "COGNITO_USER_POOLS"
   authorizer_id = aws_api_gateway_authorizer.cognito.id
@@ -101,6 +119,14 @@ resource "aws_api_gateway_method" "properties_id_options" {
   authorization = "NONE"
 }
 
+# OPTIONS for import route - NEW
+resource "aws_api_gateway_method" "properties_import_options" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.properties_import.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
 # ===================================
 # INTEGRATIONS
 # ===================================
@@ -119,6 +145,17 @@ resource "aws_api_gateway_integration" "properties_post_lambda" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   resource_id = aws_api_gateway_resource.properties.id
   http_method = aws_api_gateway_method.properties_post.http_method
+
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = data.terraform_remote_state.lambda_crud.outputs.lambda_invoke_arn
+}
+
+# Integration for import - NEW
+resource "aws_api_gateway_integration" "properties_import_post_lambda" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.properties_import.id
+  http_method = aws_api_gateway_method.properties_import_post.http_method
 
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
@@ -180,6 +217,20 @@ resource "aws_api_gateway_integration" "properties_id_options" {
   }
 }
 
+# CORS integration for import - NEW
+resource "aws_api_gateway_integration" "properties_import_options" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.properties_import.id
+  http_method = aws_api_gateway_method.properties_import_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = jsonencode({
+      statusCode = 200
+    })
+  }
+}
+
 # ===================================
 # METHOD RESPONSES
 # ===================================
@@ -199,6 +250,18 @@ resource "aws_api_gateway_method_response" "properties_post_200" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   resource_id = aws_api_gateway_resource.properties.id
   http_method = aws_api_gateway_method.properties_post.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin" = true
+  }
+}
+
+# Method response for import - NEW
+resource "aws_api_gateway_method_response" "properties_import_post_200" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.properties_import.id
+  http_method = aws_api_gateway_method.properties_import_post.http_method
   status_code = "200"
 
   response_parameters = {
@@ -255,6 +318,20 @@ resource "aws_api_gateway_method_response" "properties_id_options" {
   }
 }
 
+# CORS method response for import - NEW
+resource "aws_api_gateway_method_response" "properties_import_options" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.properties_import.id
+  http_method = aws_api_gateway_method.properties_import_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
 # ===================================
 # INTEGRATION RESPONSES
 # ===================================
@@ -283,6 +360,20 @@ resource "aws_api_gateway_integration_response" "properties_post_200" {
   }
 
   depends_on = [aws_api_gateway_integration.properties_post_lambda]
+}
+
+# Integration response for import - NEW
+resource "aws_api_gateway_integration_response" "properties_import_post_200" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.properties_import.id
+  http_method = aws_api_gateway_method.properties_import_post.http_method
+  status_code = aws_api_gateway_method_response.properties_import_post_200.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin" = "'*'"
+  }
+
+  depends_on = [aws_api_gateway_integration.properties_import_post_lambda]
 }
 
 resource "aws_api_gateway_integration_response" "properties_id_put_200" {
@@ -338,21 +429,39 @@ resource "aws_api_gateway_integration_response" "properties_id_options" {
   }
 }
 
+# CORS integration response for import - NEW
+resource "aws_api_gateway_integration_response" "properties_import_options" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.properties_import.id
+  http_method = aws_api_gateway_method.properties_import_options.http_method
+  status_code = aws_api_gateway_method_response.properties_import_options.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
 # API Gateway Deployment
 resource "aws_api_gateway_deployment" "main" {
   depends_on = [
     aws_api_gateway_method.properties_get,
     aws_api_gateway_method.properties_post,
+    aws_api_gateway_method.properties_import_post,
     aws_api_gateway_method.properties_id_put,
     aws_api_gateway_method.properties_id_delete,
     aws_api_gateway_method.properties_options,
     aws_api_gateway_method.properties_id_options,
+    aws_api_gateway_method.properties_import_options,
     aws_api_gateway_integration.properties_get_lambda,
     aws_api_gateway_integration.properties_post_lambda,
+    aws_api_gateway_integration.properties_import_post_lambda,
     aws_api_gateway_integration.properties_id_put_lambda,
     aws_api_gateway_integration.properties_id_delete_lambda,
     aws_api_gateway_integration.properties_options,
     aws_api_gateway_integration.properties_id_options,
+    aws_api_gateway_integration.properties_import_options,
   ]
 
   rest_api_id = aws_api_gateway_rest_api.main.id
@@ -361,12 +470,15 @@ resource "aws_api_gateway_deployment" "main" {
     redeployment = sha1(jsonencode([
       aws_api_gateway_resource.properties.id,
       aws_api_gateway_resource.properties_id.id,
+      aws_api_gateway_resource.properties_import.id,
       aws_api_gateway_method.properties_get.id,
       aws_api_gateway_method.properties_post.id,
+      aws_api_gateway_method.properties_import_post.id,
       aws_api_gateway_method.properties_id_put.id,
       aws_api_gateway_method.properties_id_delete.id,
       aws_api_gateway_integration.properties_get_lambda.id,
       aws_api_gateway_integration.properties_post_lambda.id,
+      aws_api_gateway_integration.properties_import_post_lambda.id,
       aws_api_gateway_integration.properties_id_put_lambda.id,
       aws_api_gateway_integration.properties_id_delete_lambda.id,
     ]))
@@ -383,7 +495,6 @@ resource "aws_api_gateway_stage" "main" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   stage_name    = var.environment
 
-  # Enable CloudWatch logs
   xray_tracing_enabled = true
 
   access_log_settings {

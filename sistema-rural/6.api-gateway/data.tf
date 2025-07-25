@@ -1,3 +1,4 @@
+# Remote state references
 data "terraform_remote_state" "infrastructure" {
   backend = "s3"
   config = {

@@ -3,15 +3,19 @@ import boto3
 import uuid
 import os
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, List
 from decimal import Decimal
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 
 # AWS clients
 dynamodb = boto3.resource("dynamodb")
+eventbridge = boto3.client("events")
+
+# Environment variables
 table_name = os.environ.get("PROPERTIES_TABLE")
 table = dynamodb.Table(table_name)
+eventbus_name = os.environ.get("EVENTBRIDGE_BUS_NAME", "")
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -25,7 +29,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if not user_id:
             return create_response(401, {"error": "Token inválido"})
 
-        if method == "POST" and "/properties" in resource and "{id}" not in resource:
+        # Routes
+        if method == "POST" and "/properties/import" in resource:
+            return import_properties_bulk(event, user_id)
+        elif method == "POST" and "/properties" in resource and "{id}" not in resource:
             return create_property(event, user_id)
         elif method == "GET" and "/properties" in resource and "{id}" not in resource:
             return get_properties(event, user_id)
@@ -41,7 +48,77 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             )
 
     except Exception as e:
+        print(f"Error in lambda_handler: {str(e)}")
         return create_response(500, {"error": "Erro interno do servidor"})
+
+
+def import_properties_bulk(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Importa propriedades em lote via CSV"""
+    try:
+        body = json.loads(event.get("body", "{}"))
+        properties_data = body.get("properties", [])
+        
+        if not properties_data:
+            return create_response(400, {"error": "Nenhuma propriedade fornecida"})
+        
+        imported_count = 0
+        errors = []
+        
+        for i, property_data in enumerate(properties_data):
+            try:
+                # Validate property data
+                validation_result = validate_property_data(property_data)
+                if not validation_result["valid"]:
+                    errors.append(f"Propriedade {i+1}: {validation_result['message']}")
+                    continue
+                
+                # Create property ID
+                property_id = str(uuid.uuid4())
+                now = datetime.now(timezone.utc).isoformat()
+                
+                # Prepare coordinates for DynamoDB
+                coordinates_decimal = convert_coordinates_to_decimal(
+                    property_data.get("coordinates", [])
+                )
+                
+                # Prepare item for DynamoDB
+                item = {
+                    "propertyId": property_id,
+                    "userId": user_id,
+                    "name": property_data["name"],
+                    "type": property_data.get("type", "farm"),
+                    "description": property_data.get("description", ""),
+                    "area": Decimal(str(property_data.get("area", 0))),
+                    "perimeter": Decimal(str(property_data.get("perimeter", 0))),
+                    "coordinates": coordinates_decimal,
+                    "analysisStatus": "pending",
+                    "createdAt": now,
+                    "updatedAt": now,
+                }
+                
+                # Save to DynamoDB
+                table.put_item(Item=item)
+                
+                # Publish event to EventBridge
+                publish_property_event(property_id, user_id, item, "Property Created")
+                
+                imported_count += 1
+                
+            except Exception as property_error:
+                errors.append(f"Propriedade {i+1}: {str(property_error)}")
+                continue
+        
+        response_data = {
+            "imported": imported_count,
+            "total": len(properties_data),
+            "errors": errors
+        }
+        
+        return create_response(200, response_data)
+        
+    except Exception as e:
+        print(f"Error in import_properties_bulk: {str(e)}")
+        return create_response(500, {"error": f"Erro na importação: {str(e)}"})
 
 
 def create_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
@@ -53,193 +130,255 @@ def create_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         if not validation_result["valid"]:
             return create_response(400, {"error": validation_result["message"]})
 
-        property_id = f"prop_{uuid.uuid4().hex[:12]}"
-        current_time = datetime.now(timezone.utc).isoformat()
+        property_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
 
-        property_item = {
-            "userId": user_id,
-            "propertyId": property_id,
-            "name": body["name"],
-            "type": body.get("type", "fazenda"),
-            "description": body.get("description", ""),
-            "area": Decimal(str(body["area"])),
-            "perimeter": Decimal(str(body["perimeter"])),
-            "coordinates": convert_coordinates_to_decimal(body["coordinates"]),
-            "analysisStatus": "pending",
-            "createdAt": current_time,
-            "updatedAt": current_time,
-        }
-
-        table.put_item(Item=property_item)
-        formatted_property = format_property_for_response(property_item)
-
-        return create_response(
-            201,
-            {
-                "message": "Propriedade criada com sucesso",
-                "property": formatted_property,
-            },
+        # Convert coordinates to Decimal for DynamoDB
+        coordinates_decimal = convert_coordinates_to_decimal(
+            body.get("coordinates", [])
         )
 
+        item = {
+            "propertyId": property_id,
+            "userId": user_id,
+            "name": body["name"],
+            "type": body.get("type", "farm"),
+            "description": body.get("description", ""),
+            "area": Decimal(str(body.get("area", 0))),
+            "perimeter": Decimal(str(body.get("perimeter", 0))),
+            "coordinates": coordinates_decimal,
+            "analysisStatus": "pending",
+            "createdAt": now,
+            "updatedAt": now,
+        }
+
+        table.put_item(Item=item)
+
+        # Publish event to EventBridge
+        publish_property_event(property_id, user_id, item, "Property Created")
+
+        response_property = format_property_for_response(item)
+        return create_response(201, response_property)
+
+    except ClientError as e:
+        print(f"DynamoDB error: {str(e)}")
+        return create_response(500, {"error": "Erro ao salvar propriedade"})
     except Exception as e:
-        return create_response(500, {"error": "Erro ao criar propriedade"})
+        print(f"Error in create_property: {str(e)}")
+        return create_response(500, {"error": "Erro interno do servidor"})
 
 
 def get_properties(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Lista propriedades do usuário"""
     try:
-        query_params = event.get("queryStringParameters") or {}
-        limit = int(query_params.get("limit", 50))
-
         response = table.query(
+            IndexName="UserIdIndex",
             KeyConditionExpression=Key("userId").eq(user_id),
-            Limit=min(limit, 100),
-            ScanIndexForward=False,
+            ScanIndexForward=False,  # Order by createdAt desc
         )
 
         properties = [
             format_property_for_response(item) for item in response.get("Items", [])
         ]
 
-        return create_response(
-            200, {"properties": properties, "count": len(properties)}
-        )
+        return create_response(200, properties)
 
-    except Exception as e:
+    except ClientError as e:
+        print(f"DynamoDB error: {str(e)}")
         return create_response(500, {"error": "Erro ao buscar propriedades"})
+    except Exception as e:
+        print(f"Error in get_properties: {str(e)}")
+        return create_response(500, {"error": "Erro interno do servidor"})
 
 
 def update_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Atualiza propriedade existente"""
     try:
-        path_parameters = event.get("pathParameters") or {}
-        property_id = path_parameters.get("id")
-
-        if not property_id:
-            return create_response(400, {"error": "ID da propriedade é obrigatório"})
-
+        property_id = event["pathParameters"]["id"]
         body = json.loads(event.get("body", "{}"))
 
-        # Verificar se propriedade existe
-        existing = table.get_item(Key={"userId": user_id, "propertyId": property_id})
-        if "Item" not in existing:
+        # Validate property data
+        validation_result = validate_property_data(body)
+        if not validation_result["valid"]:
+            return create_response(400, {"error": validation_result["message"]})
+
+        # Check if property exists and belongs to user
+        existing_property = table.get_item(Key={"propertyId": property_id})
+        if "Item" not in existing_property:
             return create_response(404, {"error": "Propriedade não encontrada"})
 
-        # Construir update expression
-        update_expression = "SET updatedAt = :updatedAt"
-        expression_values = {":updatedAt": datetime.now(timezone.utc).isoformat()}
+        if existing_property["Item"]["userId"] != user_id:
+            return create_response(403, {"error": "Acesso negado"})
 
-        if "name" in body:
-            update_expression += ", #name = :name"
-            expression_values[":name"] = body["name"]
+        # Update timestamp
+        now = datetime.now(timezone.utc).isoformat()
 
-        if "type" in body:
-            update_expression += ", #type = :type"
-            expression_values[":type"] = body["type"]
+        # Convert coordinates to Decimal
+        coordinates_decimal = convert_coordinates_to_decimal(
+            body.get("coordinates", [])
+        )
 
-        if "description" in body:
-            update_expression += ", description = :description"
-            expression_values[":description"] = body["description"]
-
-        if "area" in body:
-            update_expression += ", area = :area"
-            expression_values[":area"] = Decimal(str(body["area"]))
-
-        if "perimeter" in body:
-            update_expression += ", perimeter = :perimeter"
-            expression_values[":perimeter"] = Decimal(str(body["perimeter"]))
-
-        if "coordinates" in body:
-            update_expression += ", coordinates = :coordinates"
-            expression_values[":coordinates"] = convert_coordinates_to_decimal(
-                body["coordinates"]
-            )
+        # Update item
+        update_expression = "SET #name = :name, #type = :type, description = :desc, area = :area, perimeter = :perimeter, coordinates = :coords, updatedAt = :updatedAt"
+        expression_attribute_names = {"#name": "name", "#type": "type"}
+        expression_attribute_values = {
+            ":name": body["name"],
+            ":type": body.get("type", "farm"),
+            ":desc": body.get("description", ""),
+            ":area": Decimal(str(body.get("area", 0))),
+            ":perimeter": Decimal(str(body.get("perimeter", 0))),
+            ":coords": coordinates_decimal,
+            ":updatedAt": now,
+        }
 
         response = table.update_item(
-            Key={"userId": user_id, "propertyId": property_id},
+            Key={"propertyId": property_id},
             UpdateExpression=update_expression,
-            ExpressionAttributeValues=expression_values,
-            ExpressionAttributeNames={"#name": "name", "#type": "type"},
+            ExpressionAttributeNames=expression_attribute_names,
+            ExpressionAttributeValues=expression_attribute_values,
             ReturnValues="ALL_NEW",
         )
 
-        formatted_property = format_property_for_response(response["Attributes"])
+        updated_property = response["Attributes"]
 
-        return create_response(
-            200,
-            {
-                "message": "Propriedade atualizada com sucesso",
-                "property": formatted_property,
-            },
-        )
+        # Publish event to EventBridge
+        publish_property_event(property_id, user_id, updated_property, "Property Updated")
 
-    except Exception as e:
+        response_property = format_property_for_response(updated_property)
+        return create_response(200, response_property)
+
+    except ClientError as e:
+        print(f"DynamoDB error: {str(e)}")
         return create_response(500, {"error": "Erro ao atualizar propriedade"})
+    except Exception as e:
+        print(f"Error in update_property: {str(e)}")
+        return create_response(500, {"error": "Erro interno do servidor"})
 
 
 def delete_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
-    """Deleta propriedade"""
+    """Remove propriedade"""
     try:
-        path_parameters = event.get("pathParameters") or {}
-        property_id = path_parameters.get("id")
+        property_id = event["pathParameters"]["id"]
 
-        if not property_id:
-            return create_response(400, {"error": "ID da propriedade é obrigatório"})
+        # Check if property exists and belongs to user
+        existing_property = table.get_item(Key={"propertyId": property_id})
+        if "Item" not in existing_property:
+            return create_response(404, {"error": "Propriedade não encontrada"})
 
-        table.delete_item(
-            Key={"userId": user_id, "propertyId": property_id},
-            ConditionExpression="attribute_exists(userId) AND attribute_exists(propertyId)",
-        )
+        if existing_property["Item"]["userId"] != user_id:
+            return create_response(403, {"error": "Acesso negado"})
 
-        return create_response(
-            200,
-            {
-                "message": "Propriedade deletada com sucesso",
-                "deletedProperty": {"id": property_id},
-            },
-        )
+        # Delete property
+        table.delete_item(Key={"propertyId": property_id})
+
+        # Publish event to EventBridge
+        publish_property_event(property_id, user_id, existing_property["Item"], "Property Deleted")
+
+        return create_response(200, {"message": "Propriedade removida com sucesso"})
 
     except ClientError as e:
-        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-            return create_response(404, {"error": "Propriedade não encontrada"})
-        return create_response(500, {"error": "Erro ao deletar propriedade"})
+        print(f"DynamoDB error: {str(e)}")
+        return create_response(500, {"error": "Erro ao remover propriedade"})
+    except Exception as e:
+        print(f"Error in delete_property: {str(e)}")
+        return create_response(500, {"error": "Erro interno do servidor"})
 
 
-# Funções auxiliares
-def extract_user_id(event: Dict[str, Any]) -> str:
-    """Extrai user ID do contexto do Cognito"""
+def publish_property_event(property_id: str, user_id: str, property_data: Dict[str, Any], event_type: str):
+    """Publica evento no EventBridge"""
     try:
-        authorizer_context = event.get("requestContext", {}).get("authorizer", {})
-        return authorizer_context.get("claims", {}).get(
-            "sub"
-        ) or authorizer_context.get("sub")
-    except:
+        if not eventbus_name:
+            print("EventBridge bus name not configured, skipping event publication")
+            return
+
+        # Prepare event details
+        event_detail = {
+            "propertyId": property_id,
+            "userId": user_id,
+            "name": property_data.get("name"),
+            "type": property_data.get("type"),
+            "area": float(property_data.get("area", 0)),
+            "coordinates": [
+                [float(coord[0]), float(coord[1])]
+                for coord in property_data.get("coordinates", [])
+            ],
+            "status": "created" if "Created" in event_type else "updated" if "Updated" in event_type else "deleted",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+        # Publish to EventBridge
+        response = eventbridge.put_events(
+            Entries=[
+                {
+                    "Source": "property.service",
+                    "DetailType": event_type,
+                    "Detail": json.dumps(event_detail),
+                    "EventBusName": eventbus_name,
+                }
+            ]
+        )
+
+        print(f"Event published to EventBridge: {event_type} for property {property_id}")
+        return response
+
+    except Exception as e:
+        print(f"Error publishing event to EventBridge: {str(e)}")
+        # Don't fail the main operation if event publication fails
+
+
+def extract_user_id(event: Dict[str, Any]) -> str:
+    """Extrai user_id do token JWT via API Gateway authorizer"""
+    try:
+        request_context = event.get("requestContext", {})
+        authorizer = request_context.get("authorizer", {})
+
+        # Try different possible locations for userId
+        user_id = (
+            authorizer.get("userId")
+            or authorizer.get("user_id")
+            or authorizer.get("claims", {}).get("sub")
+            or authorizer.get("principalId")
+        )
+
+        return user_id
+    except Exception as e:
+        print(f"Error extracting user_id: {str(e)}")
         return None
 
 
 def validate_property_data(data: Dict[str, Any]) -> Dict[str, Any]:
     """Valida dados da propriedade"""
-    required_fields = ["name", "area", "perimeter", "coordinates"]
-
-    for field in required_fields:
-        if field not in data:
-            return {"valid": False, "message": f"Campo obrigatório: {field}"}
-
-    if not data["name"].strip() or len(data["name"]) < 2:
+    if not data.get("name") or len(data["name"].strip()) < 2:
         return {"valid": False, "message": "Nome deve ter pelo menos 2 caracteres"}
 
     try:
-        area = float(data["area"])
+        area = float(data.get("area", 0))
         if area <= 0:
             return {"valid": False, "message": "Área deve ser maior que zero"}
-    except:
+    except (ValueError, TypeError):
         return {"valid": False, "message": "Área deve ser um número válido"}
+
+    # Validate coordinates if provided
+    coordinates = data.get("coordinates", [])
+    if coordinates:
+        if not isinstance(coordinates, list) or len(coordinates) < 3:
+            return {"valid": False, "message": "Coordenadas devem ser uma lista com pelo menos 3 pontos"}
+        
+        for i, coord in enumerate(coordinates):
+            if not isinstance(coord, list) or len(coord) != 2:
+                return {"valid": False, "message": f"Coordenada {i+1} deve ter formato [longitude, latitude]"}
+            
+            try:
+                float(coord[0])  # longitude
+                float(coord[1])  # latitude
+            except (ValueError, TypeError):
+                return {"valid": False, "message": f"Coordenada {i+1} deve conter números válidos"}
 
     return {"valid": True, "message": "Dados válidos"}
 
 
 def convert_coordinates_to_decimal(coordinates):
-    """Converte coordenadas para Decimal"""
+    """Converte coordenadas para Decimal para DynamoDB"""
     if not isinstance(coordinates, list):
         return coordinates
     return [

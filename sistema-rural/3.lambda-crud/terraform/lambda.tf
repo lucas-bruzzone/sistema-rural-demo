@@ -1,3 +1,5 @@
+# sistema-rural/3.lambda-crud/terraform/lambda.tf
+
 module "lambda_function" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "~> 4.7"
@@ -16,6 +18,7 @@ module "lambda_function" {
   environment_variables = {
     PROPERTIES_TABLE        = data.terraform_remote_state.infrastructure.outputs.properties_table_name
     PROPERTY_ANALYSIS_TABLE = data.terraform_remote_state.infrastructure.outputs.property_analysis_table_name
+    EVENTBRIDGE_BUS_NAME    = data.terraform_remote_state.analysis_infra.outputs.property_analysis_bus_name
     ENVIRONMENT             = var.environment
   }
 
