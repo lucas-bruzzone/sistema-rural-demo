@@ -13,7 +13,7 @@ data "terraform_remote_state" "analysis_infra" {
   backend = "s3"
   config = {
     bucket = "example-aws-terraform-terraform-state"
-    key    = "analysis-infra/terraform.tfstate"
+    key    = "lambda-analysis-infrastructure/terraform.tfstate"
     region = "us-east-1"
   }
 }
