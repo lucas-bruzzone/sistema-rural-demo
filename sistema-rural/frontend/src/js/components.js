@@ -71,26 +71,21 @@ class AuthForm {
         this.init();
     }
 
+    // Helper to get correct path for localhost
+    getPath(htmlFile) {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        return isLocalhost ? `/src/${htmlFile}` : `/${htmlFile}`;
+    }
+
     init() {
         this.bindTabEvents();
         this.bindFormEvents();
-        this.bindSSOEvents();
         this.setupPasswordValidation();
     }
 
     bindTabEvents() {
         if (this.loginTabBtn) this.loginTabBtn.addEventListener('click', () => this.switchTab('login'));
         if (this.signupTabBtn) this.signupTabBtn.addEventListener('click', () => this.switchTab('signup'));
-    }
-
-    bindSSOEvents() {
-        const googleButtons = document.querySelectorAll('.btn-google-standard, #googleSignInBtn');
-        googleButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.handleGoogleSignIn();
-            });
-        });
     }
 
     bindFormEvents() {
@@ -126,15 +121,6 @@ class AuthForm {
                     ? 'Mínimo 8 caracteres, maiúscula, minúscula e número'
                     : '❌ Senha não atende aos requisitos';
             });
-        }
-    }
-
-    handleGoogleSignIn() {
-        try {
-            this.showStatus('Redirecionando para Google...', 'info');
-            auth.signInWithGoogle();
-        } catch (error) {
-            this.showStatus('Erro ao acessar Google', 'error');
         }
     }
 

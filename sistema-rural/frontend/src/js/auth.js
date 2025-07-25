@@ -3,14 +3,6 @@ const getCognitoConfig = () => {
     if (window.SISTEMA_RURAL_CONFIG) {
         return window.SISTEMA_RURAL_CONFIG.COGNITO;
     }
-    
-    // Fallback para desenvolvimento local
-    return {
-        region: 'us-east-1',
-        userPoolId: 'us-east-1_EkIZzPSf0',
-        clientId: '45c9vf0elept4c6l50cv7eo67q',
-        domain: 'example-cloud-api-devops-auth.auth.us-east-1.amazoncognito.com'
-    };
 };
 
 class CognitoAuth {
@@ -23,59 +15,10 @@ class CognitoAuth {
         this.pendingConfirmationUsername = null;
     }
 
-    // Google SSO
-    signInWithGoogle() {
-        const redirectUri = window.location.origin + '/callback.html';
-        const url = `https://${this.config.domain}/oauth2/authorize?` +
-            `client_id=${this.config.clientId}&` +
-            `response_type=code&` +
-            `scope=email+openid+profile&` +
-            `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-            `identity_provider=Google&` +
-            `prompt=select_account`;
-        
-        window.location.href = url;
-    }
-
-    // Exchange OAuth code for tokens
-    async exchangeCodeForTokens(code) {
-        const redirectUri = window.location.origin + '/callback.html';
-        
-        try {
-            const response = await fetch(`https://${this.config.domain}/oauth2/token`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: new URLSearchParams({
-                    grant_type: 'authorization_code',
-                    client_id: this.config.clientId,
-                    code: code,
-                    redirect_uri: redirectUri
-                })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                
-                this.accessToken = data.access_token;
-                this.idToken = data.id_token;
-                this.refreshToken = data.refresh_token;
-                
-                localStorage.setItem('accessToken', this.accessToken);
-                localStorage.setItem('idToken', this.idToken);
-                localStorage.setItem('refreshToken', this.refreshToken);
-                
-                const payload = JSON.parse(atob(this.idToken.split('.')[1]));
-                this.currentUsername = payload['cognito:username'] || payload.email || 'User';
-                
-                return { success: true };
-            } else {
-                throw new Error(`Token exchange failed: ${response.status}`);
-            }
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
+    // Helper to get correct path for localhost
+    getPath(htmlFile) {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        return isLocalhost ? `/src/${htmlFile}` : `/${htmlFile}`;
     }
 
     async signUp(username, password) {
@@ -291,31 +234,38 @@ class CognitoAuth {
         }
 
         try {
-            const response = await fetch(`https://${this.config.domain}/oauth2/token`, {
+            const url = `https://cognito-idp.${this.config.region}.amazonaws.com/`;
+            
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/x-amz-json-1.1',
+                    'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth'
                 },
-                body: new URLSearchParams({
-                    grant_type: 'refresh_token',
-                    client_id: this.config.clientId,
-                    refresh_token: this.refreshToken
+                body: JSON.stringify({
+                    ClientId: this.config.clientId,
+                    AuthFlow: 'REFRESH_TOKEN_AUTH',
+                    AuthParameters: {
+                        REFRESH_TOKEN: this.refreshToken
+                    }
                 })
             });
 
             if (response.ok) {
                 const data = await response.json();
                 
-                this.accessToken = data.access_token;
-                this.idToken = data.id_token;
-                
-                localStorage.setItem('accessToken', this.accessToken);
-                localStorage.setItem('idToken', this.idToken);
-                
-                return true;
-            } else {
-                throw new Error('Token refresh failed');
+                if (data.AuthenticationResult) {
+                    this.accessToken = data.AuthenticationResult.AccessToken;
+                    this.idToken = data.AuthenticationResult.IdToken;
+                    
+                    localStorage.setItem('accessToken', this.accessToken);
+                    localStorage.setItem('idToken', this.idToken);
+                    
+                    return true;
+                }
             }
+            
+            throw new Error('Token refresh failed');
         } catch (error) {
             this.signOut();
             return false;
