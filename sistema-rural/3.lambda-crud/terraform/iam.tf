@@ -15,7 +15,6 @@ resource "aws_iam_role" "lambda" {
     ]
   })
 
-  tags = var.default_tags
 }
 
 # IAM Policy for Lambda
