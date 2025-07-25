@@ -63,8 +63,6 @@ resource "aws_iam_policy" "lambda_policy" {
       }
     ]
   })
-
-  tags = var.default_tags
 }
 
 # Attach policy to role
