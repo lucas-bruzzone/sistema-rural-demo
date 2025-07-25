@@ -57,13 +57,13 @@ def import_properties_bulk(event: Dict[str, Any], user_id: str) -> Dict[str, Any
     try:
         body = json.loads(event.get("body", "{}"))
         properties_data = body.get("properties", [])
-        
+
         if not properties_data:
             return create_response(400, {"error": "Nenhuma propriedade fornecida"})
-        
+
         imported_count = 0
         errors = []
-        
+
         for i, property_data in enumerate(properties_data):
             try:
                 # Validate property data
@@ -71,16 +71,16 @@ def import_properties_bulk(event: Dict[str, Any], user_id: str) -> Dict[str, Any
                 if not validation_result["valid"]:
                     errors.append(f"Propriedade {i+1}: {validation_result['message']}")
                     continue
-                
+
                 # Create property ID
                 property_id = str(uuid.uuid4())
                 now = datetime.now(timezone.utc).isoformat()
-                
+
                 # Prepare coordinates for DynamoDB
                 coordinates_decimal = convert_coordinates_to_decimal(
                     property_data.get("coordinates", [])
                 )
-                
+
                 # Prepare item for DynamoDB
                 item = {
                     "propertyId": property_id,
@@ -95,27 +95,27 @@ def import_properties_bulk(event: Dict[str, Any], user_id: str) -> Dict[str, Any
                     "createdAt": now,
                     "updatedAt": now,
                 }
-                
+
                 # Save to DynamoDB
                 table.put_item(Item=item)
-                
+
                 # Publish event to EventBridge
                 publish_property_event(property_id, user_id, item, "Property Created")
-                
+
                 imported_count += 1
-                
+
             except Exception as property_error:
                 errors.append(f"Propriedade {i+1}: {str(property_error)}")
                 continue
-        
+
         response_data = {
             "imported": imported_count,
             "total": len(properties_data),
-            "errors": errors
+            "errors": errors,
         }
-        
+
         return create_response(200, response_data)
-        
+
     except Exception as e:
         print(f"Error in import_properties_bulk: {str(e)}")
         return create_response(500, {"error": f"Erro na importação: {str(e)}"})
@@ -181,7 +181,9 @@ def get_properties(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             format_property_for_response(item) for item in response.get("Items", [])
         ]
 
-        return create_response(200, properties)
+        return create_response(
+            200, {"properties": properties, "count": len(properties)}
+        )
 
     except ClientError as e:
         print(f"DynamoDB error: {str(e)}")
@@ -242,7 +244,9 @@ def update_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         updated_property = response["Attributes"]
 
         # Publish event to EventBridge
-        publish_property_event(property_id, user_id, updated_property, "Property Updated")
+        publish_property_event(
+            property_id, user_id, updated_property, "Property Updated"
+        )
 
         response_property = format_property_for_response(updated_property)
         return create_response(200, response_property)
@@ -272,7 +276,9 @@ def delete_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         table.delete_item(Key={"propertyId": property_id})
 
         # Publish event to EventBridge
-        publish_property_event(property_id, user_id, existing_property["Item"], "Property Deleted")
+        publish_property_event(
+            property_id, user_id, existing_property["Item"], "Property Deleted"
+        )
 
         return create_response(200, {"message": "Propriedade removida com sucesso"})
 
@@ -284,7 +290,9 @@ def delete_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         return create_response(500, {"error": "Erro interno do servidor"})
 
 
-def publish_property_event(property_id: str, user_id: str, property_data: Dict[str, Any], event_type: str):
+def publish_property_event(
+    property_id: str, user_id: str, property_data: Dict[str, Any], event_type: str
+):
     """Publica evento no EventBridge"""
     try:
         if not eventbus_name:
@@ -302,8 +310,12 @@ def publish_property_event(property_id: str, user_id: str, property_data: Dict[s
                 [float(coord[0]), float(coord[1])]
                 for coord in property_data.get("coordinates", [])
             ],
-            "status": "created" if "Created" in event_type else "updated" if "Updated" in event_type else "deleted",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "status": (
+                "created"
+                if "Created" in event_type
+                else "updated" if "Updated" in event_type else "deleted"
+            ),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # Publish to EventBridge
@@ -318,7 +330,9 @@ def publish_property_event(property_id: str, user_id: str, property_data: Dict[s
             ]
         )
 
-        print(f"Event published to EventBridge: {event_type} for property {property_id}")
+        print(
+            f"Event published to EventBridge: {event_type} for property {property_id}"
+        )
         return response
 
     except Exception as e:
@@ -362,17 +376,26 @@ def validate_property_data(data: Dict[str, Any]) -> Dict[str, Any]:
     coordinates = data.get("coordinates", [])
     if coordinates:
         if not isinstance(coordinates, list) or len(coordinates) < 3:
-            return {"valid": False, "message": "Coordenadas devem ser uma lista com pelo menos 3 pontos"}
-        
+            return {
+                "valid": False,
+                "message": "Coordenadas devem ser uma lista com pelo menos 3 pontos",
+            }
+
         for i, coord in enumerate(coordinates):
             if not isinstance(coord, list) or len(coord) != 2:
-                return {"valid": False, "message": f"Coordenada {i+1} deve ter formato [longitude, latitude]"}
-            
+                return {
+                    "valid": False,
+                    "message": f"Coordenada {i+1} deve ter formato [longitude, latitude]",
+                }
+
             try:
                 float(coord[0])  # longitude
                 float(coord[1])  # latitude
             except (ValueError, TypeError):
-                return {"valid": False, "message": f"Coordenada {i+1} deve conter números válidos"}
+                return {
+                    "valid": False,
+                    "message": f"Coordenada {i+1} deve conter números válidos",
+                }
 
     return {"valid": True, "message": "Dados válidos"}
 
