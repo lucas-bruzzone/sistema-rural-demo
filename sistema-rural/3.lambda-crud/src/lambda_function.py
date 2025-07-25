@@ -171,10 +171,10 @@ def create_property(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 def get_properties(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Lista propriedades do usuário"""
     try:
+        # Query directly on the main table since userId is the hash key
         response = table.query(
-            IndexName="UserIdIndex",
             KeyConditionExpression=Key("userId").eq(user_id),
-            ScanIndexForward=False,  # Order by createdAt desc
+            ScanIndexForward=False,  # Order by propertyId desc
         )
 
         properties = [
