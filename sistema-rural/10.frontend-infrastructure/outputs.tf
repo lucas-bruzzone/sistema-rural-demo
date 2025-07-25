@@ -47,3 +47,16 @@ output "frontend_summary" {
     invalidation_trigger = null_resource.cloudfront_invalidation.id
   }
 }
+
+# Debug: mostrar valores das variáveis
+output "debug_config_values" {
+  value = {
+    api_gateway_url      = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
+    cognito_region       = data.terraform_remote_state.infrastructure.outputs.cognito_region
+    cognito_user_pool_id = data.terraform_remote_state.infrastructure.outputs.cognito_user_pool_id
+    cognito_client_id    = data.terraform_remote_state.infrastructure.outputs.cognito_client_id
+    cognito_domain       = "${data.terraform_remote_state.infrastructure.outputs.cognito_domain}.auth.${data.terraform_remote_state.infrastructure.outputs.cognito_region}.amazoncognito.com"
+    websocket_url        = data.terraform_remote_state.websocket.outputs.websocket_stage_url
+    environment          = var.environment
+  }
+}

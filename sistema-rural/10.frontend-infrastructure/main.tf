@@ -178,6 +178,14 @@ resource "aws_cloudfront_distribution" "frontend" {
 # GERAR ARQUIVO DE CONFIGURAÇÃO
 # ===================================
 
+# Criar diretório se não existir
+resource "null_resource" "create_generated_dir" {
+  provisioner "local-exec" {
+    command = "mkdir -p ${path.module}/generated"
+  }
+}
+
+# Gerar config.js usando template
 resource "local_file" "config_js" {
   content = templatefile("${path.module}/config.js.tpl", {
     api_gateway_url      = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
@@ -188,8 +196,47 @@ resource "local_file" "config_js" {
     websocket_url        = data.terraform_remote_state.websocket.outputs.websocket_stage_url
     environment          = var.environment
   })
+
   filename = "${path.module}/generated/config.js"
+
+  depends_on = [null_resource.create_generated_dir]
 }
+
+locals {
+  config_js_content = <<-EOT
+// Sistema Rural - Configuração dinâmica
+// Este arquivo é gerado automaticamente pelo Terraform
+window.SISTEMA_RURAL_CONFIG = {
+    // API Gateway
+    API_BASE_URL: '${data.terraform_remote_state.api_gateway.outputs.api_gateway_url}',
+    
+    // AWS Cognito
+    COGNITO: {
+        region: '${data.terraform_remote_state.infrastructure.outputs.cognito_region}',
+        userPoolId: '${data.terraform_remote_state.infrastructure.outputs.cognito_user_pool_id}',
+        clientId: '${data.terraform_remote_state.infrastructure.outputs.cognito_client_id}',
+        domain: '${data.terraform_remote_state.infrastructure.outputs.cognito_domain}.auth.${data.terraform_remote_state.infrastructure.outputs.cognito_region}.amazoncognito.com'
+    },
+    
+    // WebSocket
+    WEBSOCKET_URL: '${data.terraform_remote_state.websocket.outputs.websocket_stage_url}',
+    
+    // Environment
+    ENVIRONMENT: '${var.environment}',
+    
+    // Version
+    VERSION: '1.2.1'
+};
+EOT
+}
+
+# Arquivo alternativo usando locals
+resource "local_file" "config_js_fallback" {
+  content  = local.config_js_content
+  filename = "${path.module}/generated/config-fallback.js"
+}
+
+
 
 # ===================================
 # UPLOAD DOS ARQUIVOS ESTÁTICOS
