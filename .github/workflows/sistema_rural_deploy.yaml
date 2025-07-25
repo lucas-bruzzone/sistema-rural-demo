@@ -79,6 +79,7 @@ jobs:
             - 'sistema-rural/9.lambda-handle-events/**'
           frontend:
             - 'sistema-rural/10.frontend-infrastructure/**'
+            - 'sistema-rural/frontend/src/**'
 
   # 1. Infrastructure Base
   deploy-infrastructure:

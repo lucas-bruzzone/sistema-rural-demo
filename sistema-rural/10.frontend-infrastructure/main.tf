@@ -253,16 +253,21 @@ resource "aws_s3_object" "frontend_files" {
   content_type = lookup(local.mime_types, regex("\\.[^.]+$", each.value), "application/octet-stream")
 }
 
-# Depois, fazer upload do config.js gerado
+# Substituir o bloco aws_s3_object.config_js existente por:
 resource "aws_s3_object" "config_js" {
   bucket       = aws_s3_bucket.frontend.id
   key          = "js/config.js"
-  source       = local_file.config_js.filename
-  etag         = local_file.config_js.content_md5
+  content      = local.config_js_content  # Usar locals ao invés do templatefile
   content_type = "application/javascript"
+  etag         = md5(local.config_js_content)
 
-  depends_on = [local_file.config_js]
+  depends_on = [
+    data.terraform_remote_state.api_gateway,
+    data.terraform_remote_state.infrastructure,
+    data.terraform_remote_state.websocket
+  ]
 }
+
 
 # ===================================
 # INVALIDAÇÃO DO CLOUDFRONT
@@ -270,7 +275,7 @@ resource "aws_s3_object" "config_js" {
 
 resource "null_resource" "cloudfront_invalidation" {
   triggers = {
-    config_js_content = local_file.config_js.content_md5
+    config_js_content = md5(local.config_js_content)  # Usar md5 do locals
     frontend_files    = join(",", [for k, v in aws_s3_object.frontend_files : v.etag])
   }
 
