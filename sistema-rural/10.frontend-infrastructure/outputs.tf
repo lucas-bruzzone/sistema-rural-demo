@@ -23,9 +23,9 @@ output "frontend_url" {
   value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 
-output "config_js_path" {
-  description = "Caminho do arquivo config.js gerado"
-  value       = local_file.config_js.filename
+output "config_js_s3_key" {
+  description = "Chave S3 do arquivo config.js gerado"
+  value       = aws_s3_object.config_js.key
 }
 
 output "cloudfront_invalidation_trigger" {
