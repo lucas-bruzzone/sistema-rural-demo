@@ -24,3 +24,4 @@ data "terraform_remote_state" "websocket" {
     region = var.aws_region
   }
 }
+

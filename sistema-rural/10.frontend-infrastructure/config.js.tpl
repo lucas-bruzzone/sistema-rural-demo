@@ -1,22 +1,21 @@
 // Sistema Rural - Configuração dinâmica
-// Este arquivo é gerado automaticamente pelo Terraform
 window.SISTEMA_RURAL_CONFIG = {
     // API Gateway
-    API_BASE_URL: '${api_gateway_url}',
+    API_BASE_URL: '${API_GATEWAY_URL}',
     
     // AWS Cognito
     COGNITO: {
-        region: '${cognito_region}',
-        userPoolId: '${cognito_user_pool_id}',
-        clientId: '${cognito_client_id}',
-        domain: '${cognito_domain}'
+        region: '${COGNITO_REGION}',
+        userPoolId: '${COGNITO_USER_POOL_ID}',
+        clientId: '${COGNITO_CLIENT_ID}',
+        domain: '${COGNITO_DOMAIN}'
     },
     
     // WebSocket
-    WEBSOCKET_URL: '${websocket_url}',
+    WEBSOCKET_URL: '${WEBSOCKET_URL}',
     
     // Environment
-    ENVIRONMENT: '${environment}',
+    ENVIRONMENT: '${ENVIRONMENT}',
     
     // Version
     VERSION: '1.2.1'
