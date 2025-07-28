@@ -126,10 +126,9 @@ resource "aws_apigatewayv2_deployment" "websocket" {
 }
 
 resource "aws_apigatewayv2_stage" "websocket" {
-  api_id        = aws_apigatewayv2_api.websocket.id
-  deployment_id = aws_apigatewayv2_deployment.websocket.id
-  name          = var.environment
-  auto_deploy   = true
+  api_id      = aws_apigatewayv2_api.websocket.id
+  name        = var.environment
+  auto_deploy = true
 
   default_route_settings {
     throttling_rate_limit    = 1000
