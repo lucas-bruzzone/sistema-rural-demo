@@ -185,6 +185,7 @@ resource "null_resource" "create_generated_dir" {
   }
 }
 
+
 # Gerar config.js usando template
 resource "local_file" "config_js" {
   content = templatefile("${path.module}/config.js.tpl", {
