@@ -194,7 +194,7 @@ jobs:
           terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
-  # 4. Lambda Analysis Infrastructure
+  # 4. Lambda Analysis Infrastructure (DEVE VIR ANTES DO LAMBDA DE ANÁLISE)
   deploy-lambda-analysis-infra:
     name: 'Deploy Lambda Analysis Infrastructure'
     runs-on: ubuntu-latest
@@ -230,7 +230,7 @@ jobs:
           terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
-  # 5. Lambda Analysis Function
+  # 5. Lambda Analysis Function (APÓS A INFRAESTRUTURA DE ANÁLISE)
   deploy-lambda-analysis:
     name: 'Deploy Lambda Analysis Function'
     runs-on: ubuntu-latest
@@ -385,7 +385,7 @@ jobs:
   deploy-lambda-handle-events:
     name: 'Deploy Lambda Handle Events'
     runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-websocket-infrastructure]
+    needs: [detect-changes, deploy-websocket-infrastructure, deploy-lambda-analysis-infra]
     if: |
       always() && !failure() && !cancelled() && (
         needs.detect-changes.outputs.deploy-all == 'true' || 
@@ -421,7 +421,7 @@ jobs:
           terraform apply -var-file="tfvars/devops.tfvars" -auto-approve -no-color
         fi
 
-  # 10. Frontend
+  # 10. Frontend (DEVE TRIGGAR MESMO APENAS COM MUDANÇAS NO FRONTEND)
   deploy-frontend:
     name: 'Deploy Frontend'
     runs-on: ubuntu-latest

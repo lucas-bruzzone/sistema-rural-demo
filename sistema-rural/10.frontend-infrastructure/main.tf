@@ -2,7 +2,6 @@
 # S3 BUCKET PARA HOSTING ESTÁTICO
 # ===================================
 
-
 resource "aws_s3_bucket" "frontend" {
   bucket = "${var.project_name}-frontend-${var.environment}"
   tags   = var.default_tags
@@ -175,35 +174,11 @@ resource "aws_cloudfront_distribution" "frontend" {
 }
 
 # ===================================
-# GERAR ARQUIVO DE CONFIGURAÇÃO
+# LOCALS PARA CONFIGURAÇÃO DINÂMICA
 # ===================================
 
-# Criar diretório se não existir
-resource "null_resource" "create_generated_dir" {
-  provisioner "local-exec" {
-    command = "mkdir -p ${path.module}/generated"
-  }
-}
-
-
-# Gerar config.js usando template
-resource "local_file" "config_js" {
-  content = templatefile("${path.module}/config.js.tpl", {
-    api_gateway_url      = data.terraform_remote_state.api_gateway.outputs.api_gateway_url
-    cognito_region       = data.terraform_remote_state.infrastructure.outputs.cognito_region
-    cognito_user_pool_id = data.terraform_remote_state.infrastructure.outputs.cognito_user_pool_id
-    cognito_client_id    = data.terraform_remote_state.infrastructure.outputs.cognito_client_id
-    cognito_domain       = "${data.terraform_remote_state.infrastructure.outputs.cognito_domain}.auth.${data.terraform_remote_state.infrastructure.outputs.cognito_region}.amazoncognito.com"
-    websocket_url        = data.terraform_remote_state.websocket.outputs.websocket_stage_url
-    environment          = var.environment
-  })
-
-  filename = "${path.module}/generated/config.js"
-
-  depends_on = [null_resource.create_generated_dir]
-}
-
 locals {
+  # Gerar config.js com substituição de variáveis
   config_js_content = <<-EOT
 // Sistema Rural - Configuração dinâmica
 // Este arquivo é gerado automaticamente pelo Terraform
@@ -229,72 +204,8 @@ window.SISTEMA_RURAL_CONFIG = {
     VERSION: '1.2.1'
 };
 EOT
-}
 
-# Arquivo alternativo usando locals
-resource "local_file" "config_js_fallback" {
-  content  = local.config_js_content
-  filename = "${path.module}/generated/config-fallback.js"
-}
-
-
-
-# ===================================
-# UPLOAD DOS ARQUIVOS ESTÁTICOS
-# ===================================
-
-# Primeiro, copiar arquivos originais
-resource "aws_s3_object" "frontend_files" {
-  for_each = fileset("${path.module}/../frontend/src", "**/*")
-
-  bucket       = aws_s3_bucket.frontend.id
-  key          = each.value
-  source       = "${path.module}/../frontend/src/${each.value}"
-  etag         = filemd5("${path.module}/../frontend/src/${each.value}")
-  content_type = lookup(local.mime_types, regex("\\.[^.]+$", each.value), "application/octet-stream")
-}
-
-# Substituir o bloco aws_s3_object.config_js existente por:
-resource "aws_s3_object" "config_js" {
-  bucket       = aws_s3_bucket.frontend.id
-  key          = "js/config.js"
-  content      = local.config_js_content  # Usar locals ao invés do templatefile
-  content_type = "application/javascript"
-  etag         = md5(local.config_js_content)
-
-  depends_on = [
-    data.terraform_remote_state.api_gateway,
-    data.terraform_remote_state.infrastructure,
-    data.terraform_remote_state.websocket
-  ]
-}
-
-
-# ===================================
-# INVALIDAÇÃO DO CLOUDFRONT
-# ===================================
-
-resource "null_resource" "cloudfront_invalidation" {
-  triggers = {
-    config_js_content = md5(local.config_js_content)  # Usar md5 do locals
-    frontend_files    = join(",", [for k, v in aws_s3_object.frontend_files : v.etag])
-  }
-
-  provisioner "local-exec" {
-    command = "aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.frontend.id} --paths '/*'"
-  }
-
-  depends_on = [
-    aws_s3_object.frontend_files,
-    aws_s3_object.config_js
-  ]
-}
-
-# ===================================
-# LOCALS
-# ===================================
-
-locals {
+  # MIME types para arquivos estáticos
   mime_types = {
     ".html"  = "text/html"
     ".css"   = "text/css"
@@ -309,4 +220,61 @@ locals {
     ".woff"  = "font/woff"
     ".woff2" = "font/woff2"
   }
+}
+
+# ===================================
+# UPLOAD DOS ARQUIVOS ESTÁTICOS
+# ===================================
+
+# Upload de todos os arquivos do frontend (exceto config.js)
+resource "aws_s3_object" "frontend_files" {
+  for_each = { for file in fileset("${path.module}/../frontend/src", "**/*") : file => file if file != "js/config.js" }
+
+  bucket       = aws_s3_bucket.frontend.id
+  key          = each.value
+  source       = "${path.module}/../frontend/src/${each.value}"
+  etag         = filemd5("${path.module}/../frontend/src/${each.value}")
+  content_type = lookup(local.mime_types, regex("\\.[^.]+$", each.value), "application/octet-stream")
+
+  depends_on = [aws_s3_bucket.frontend]
+}
+
+# Upload do config.js gerado dinamicamente
+resource "aws_s3_object" "config_js" {
+  bucket       = aws_s3_bucket.frontend.id
+  key          = "js/config.js"
+  content      = local.config_js_content
+  content_type = "application/javascript"
+  etag         = md5(local.config_js_content)
+
+  # Dependências explícitas para garantir que os remote states estejam disponíveis
+  depends_on = [
+    aws_s3_bucket.frontend,
+    data.terraform_remote_state.api_gateway,
+    data.terraform_remote_state.infrastructure,
+    data.terraform_remote_state.websocket
+  ]
+}
+
+# ===================================
+# INVALIDAÇÃO DO CLOUDFRONT
+# ===================================
+
+resource "null_resource" "cloudfront_invalidation" {
+  # Triggers para forçar invalidação quando houver mudanças
+  triggers = {
+    config_js_content = md5(local.config_js_content)
+    frontend_files    = join(",", [for k, v in aws_s3_object.frontend_files : v.etag])
+    distribution_id   = aws_cloudfront_distribution.frontend.id
+  }
+
+  provisioner "local-exec" {
+    command = "aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.frontend.id} --paths '/*'"
+  }
+
+  depends_on = [
+    aws_s3_object.frontend_files,
+    aws_s3_object.config_js,
+    aws_cloudfront_distribution.frontend
+  ]
 }
