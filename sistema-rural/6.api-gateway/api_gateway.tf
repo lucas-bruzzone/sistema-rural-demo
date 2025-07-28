@@ -579,6 +579,8 @@ resource "aws_api_gateway_integration_response" "properties_options" {
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
+
+  depends_on = [aws_api_gateway_integration.properties_options]
 }
 
 resource "aws_api_gateway_integration_response" "properties_id_options" {
@@ -592,6 +594,8 @@ resource "aws_api_gateway_integration_response" "properties_id_options" {
     "method.response.header.Access-Control-Allow-Methods" = "'GET,PUT,DELETE,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
+
+  depends_on = [aws_api_gateway_integration.properties_id_options]
 }
 
 resource "aws_api_gateway_integration_response" "properties_import_options" {
@@ -605,6 +609,8 @@ resource "aws_api_gateway_integration_response" "properties_import_options" {
     "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
+
+  depends_on = [aws_api_gateway_integration.properties_import_options]
 }
 
 resource "aws_api_gateway_integration_response" "properties_report_options" {
@@ -618,6 +624,8 @@ resource "aws_api_gateway_integration_response" "properties_report_options" {
     "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
+
+  depends_on = [aws_api_gateway_integration.properties_report_options]
 }
 
 resource "aws_api_gateway_integration_response" "properties_id_analysis_options" {
@@ -631,6 +639,8 @@ resource "aws_api_gateway_integration_response" "properties_id_analysis_options"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
+
+  depends_on = [aws_api_gateway_integration.properties_id_analysis_options]
 }
 
 # ===================================
@@ -638,6 +648,18 @@ resource "aws_api_gateway_integration_response" "properties_id_analysis_options"
 # ===================================
 
 resource "aws_api_gateway_deployment" "main" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_resource.properties.id,
+      aws_api_gateway_resource.properties_id.id,
+      aws_api_gateway_resource.properties_import.id,
+      aws_api_gateway_resource.properties_report.id,
+      aws_api_gateway_resource.properties_id_analysis.id,
+    ]))
+  }
+
   depends_on = [
     aws_api_gateway_method.properties_get,
     aws_api_gateway_method.properties_post,
@@ -663,33 +685,19 @@ resource "aws_api_gateway_deployment" "main" {
     aws_api_gateway_integration.properties_import_options,
     aws_api_gateway_integration.properties_report_options,
     aws_api_gateway_integration.properties_id_analysis_options,
+    aws_api_gateway_integration_response.properties_get_200,
+    aws_api_gateway_integration_response.properties_post_200,
+    aws_api_gateway_integration_response.properties_import_post_200,
+    aws_api_gateway_integration_response.properties_report_post_200,
+    aws_api_gateway_integration_response.properties_id_analysis_get_200,
+    aws_api_gateway_integration_response.properties_id_put_200,
+    aws_api_gateway_integration_response.properties_id_delete_200,
+    aws_api_gateway_integration_response.properties_options,
+    aws_api_gateway_integration_response.properties_id_options,
+    aws_api_gateway_integration_response.properties_import_options,
+    aws_api_gateway_integration_response.properties_report_options,
+    aws_api_gateway_integration_response.properties_id_analysis_options,
   ]
-
-  rest_api_id = aws_api_gateway_rest_api.main.id
-
-  triggers = {
-    redeployment = sha1(jsonencode([
-      aws_api_gateway_resource.properties.id,
-      aws_api_gateway_resource.properties_id.id,
-      aws_api_gateway_resource.properties_import.id,
-      aws_api_gateway_resource.properties_report.id,
-      aws_api_gateway_resource.properties_id_analysis.id,
-      aws_api_gateway_method.properties_get.id,
-      aws_api_gateway_method.properties_post.id,
-      aws_api_gateway_method.properties_import_post.id,
-      aws_api_gateway_method.properties_report_post.id,
-      aws_api_gateway_method.properties_id_analysis_get.id,
-      aws_api_gateway_method.properties_id_put.id,
-      aws_api_gateway_method.properties_id_delete.id,
-      aws_api_gateway_integration.properties_get_lambda.id,
-      aws_api_gateway_integration.properties_post_lambda.id,
-      aws_api_gateway_integration.properties_import_post_lambda.id,
-      aws_api_gateway_integration.properties_report_post_lambda.id,
-      aws_api_gateway_integration.properties_id_analysis_get_lambda.id,
-      aws_api_gateway_integration.properties_id_put_lambda.id,
-      aws_api_gateway_integration.properties_id_delete_lambda.id,
-    ]))
-  }
 
   lifecycle {
     create_before_destroy = true
