@@ -1,0 +1,26 @@
+data "terraform_remote_state" "infrastructure" {
+  backend = "s3"
+  config = {
+    bucket = "example-aws-terraform-terraform-state"
+    key    = "infrastructure/terraform.tfstate"
+    region = var.aws_region
+  }
+}
+
+data "terraform_remote_state" "lambda_authorizer" {
+  backend = "s3"
+  config = {
+    bucket = "example-aws-terraform-terraform-state"
+    key    = "lambda-authorizer/terraform.tfstate"
+    region = var.aws_region
+  }
+}
+
+data "terraform_remote_state" "lambda_websocket" {
+  backend = "s3"
+  config = {
+    bucket = "example-aws-terraform-terraform-state"
+    key    = "lambda-handle-websocket/terraform.tfstate"
+    region = var.aws_region
+  }
+}

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema Rural</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <a href="/">Sistema Rural</a>
+            </div>
+            <nav class="nav">
+                <a href="/" class="nav-link">Home</a>
+            </nav>
+            <div class="auth-section">
+                <div class="user-menu" id="userMenu">
+                    <button class="user-avatar" id="userAvatar">
+                        <span id="userInitial">U</span>
+                    </button>
+                    <div class="dropdown" id="userDropdown">
+                        <a href="dashboard.html" class="dropdown-item active">
+                            <span class="icon">📊</span> Dashboard
+                        </a>
+                        <a href="mapeamento.html" class="dropdown-item">
+                            <span class="icon">🗺️</span> Mapeamento
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item logout-btn" id="logoutBtn">
+                            <span class="icon">🚪</span> Sair
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main dashboard-main">
+        <div class="container">
+            <!-- Dashboard Header -->
+            <section class="dashboard-header">
+                <h1>Dashboard</h1>
+                <p>Visão geral do seu sistema de propriedades rurais</p>
+            </section>
+
+            <!-- Quick Stats -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">🏡</div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="totalProperties">0</div>
+                        <div class="stat-label">Propriedades</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📐</div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="totalArea">0</div>
+                        <div class="stat-label">Hectares</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📏</div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="totalPerimeter">0</div>
+                        <div class="stat-label">Km Perímetro</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Properties Management -->
+            <section class="properties-management">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="section-header">
+                            <div>
+                                <h2>Gerenciar Propriedades</h2>
+                                <p class="section-subtitle">Selecione propriedades para incluir no relatório</p>
+                            </div>
+                            <div class="selection-controls">
+                                <button class="btn btn-outline btn-small" id="selectAllBtn">
+                                    ✅ Selecionar Todas
+                                </button>
+                                <button class="btn btn-outline btn-small" id="clearSelectionBtn">
+                                    ❌ Limpar Seleção
+                                </button>
+                                <a href="mapeamento.html" class="btn btn-outline btn-small">Ver no Mapa</a>
+                                <button class="btn btn-secondary btn-small" id="importCsvBtn">
+                                    📁 Importar CSV
+                                </button>
+                                <button class="btn btn-primary btn-small" id="generateReportBtn" disabled>
+                                    📄 Gerar Relatório
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="properties-list" id="propertiesList">
+                            <div class="loading-state">
+                                <div class="loading-spinner"></div>
+                                <p>Carregando propriedades...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Info -->
+            <section class="system-info">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Informações do Sistema</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Versão:</span>
+                                <span class="info-value">1.2.0</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Último Acesso:</span>
+                                <span class="info-value" id="lastAccess">Carregando...</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Status:</span>
+                                <span class="info-value status-online">🟢 Online</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Tecnologia:</span>
+                                <span class="info-value">AWS Lambda + ReportLab + PDF</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal de Importação CSV -->
+    <div class="modal-overlay hidden" id="csvImportModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Importar Propriedades via CSV</h3>
+                <button class="modal-close" id="csvModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Upload Section -->
+                <div id="csvUploadSection">
+                    <div class="csv-upload-area">
+                        <div class="upload-icon">📁</div>
+                        <h4>Selecione o arquivo CSV</h4>
+                        <p>Formatos aceitos: .csv (máximo 5MB)</p>
+                        <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+                        <button class="btn btn-primary" onclick="document.getElementById('csvFileInput').click()">
+                            Escolher Arquivo
+                        </button>
+                    </div>
+                    <div class="csv-format-info">
+                        <h5>Formato esperado do CSV:</h5>
+                        <code>nome,tipo,descricao,area,perimetro,coordenadas</code>
+                        <p><small>Coordenadas devem estar em formato JSON: [[lng,lat],[lng,lat],...]</small></p>
+                    </div>
+                </div>
+
+                <!-- Preview Section -->
+                <div id="csvPreviewSection" class="hidden">
+                    <h4>Preview dos dados (primeiras 5 linhas)</h4>
+                    <div id="csvPreviewTable"></div>
+                    <div id="csvStats" class="csv-stats"></div>
+                    <div class="csv-actions">
+                        <button class="btn btn-primary" id="confirmImportBtn">
+                            ✅ Confirmar Importação
+                        </button>
+                        <button class="btn btn-secondary" id="cancelImportBtn">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Section -->
+                <div id="csvImportStatus" class="hidden">
+                    <div class="import-progress">
+                        <div class="loading-spinner"></div>
+                        <p id="importStatusText">Processando importação...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal (necessário para components.js) -->
+    <div class="modal-overlay hidden" id="loginModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Sistema</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Modal placeholder - não deveria aparecer no dashboard</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/dashboard.js"></script>
+
+    <script>
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            window.dashboard = new Dashboard();
+            
+            // Direct logout handler
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('#logoutBtn') || e.target.closest('.logout-btn')) {
+                    e.preventDefault();
+                    auth.signOut();
+                }
+            });
+        });
+    </script>
+
+    <style>
+        /* Property List Styles */
+        .properties-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .property-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: var(--space-lg);
+            align-items: center;
+            padding: var(--space-lg);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--border-radius-lg);
+            margin-bottom: var(--space-md);
+            background: white;
+            transition: var(--transition-slow);
+        }
+
+        .property-item:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .property-selection {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-container {
+            display: block;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-container input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+
+        .checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 20px;
+            width: 20px;
+            background-color: var(--gray-200);
+            border-radius: 3px;
+            transition: var(--transition);
+        }
+
+        .checkbox-container:hover .checkmark {
+            background-color: var(--gray-300);
+        }
+
+        .checkbox-container input:checked ~ .checkmark {
+            background-color: var(--primary);
+        }
+
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+
+        .checkbox-container input:checked ~ .checkmark:after {
+            display: block;
+        }
+
+        .checkbox-container .checkmark:after {
+            left: 6px;
+            top: 2px;
+            width: 6px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .property-content {
+            flex: 1;
+        }
+
+        .property-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            margin-bottom: var(--space-sm);
+            flex-wrap: wrap;
+        }
+
+        .property-header h4 {
+            margin: 0;
+            color: var(--gray-900);
+            font-size: 1.1rem;
+        }
+
+        .property-type {
+            background: var(--primary);
+            color: white;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--border-radius);
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .property-metrics {
+            display: flex;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-sm);
+            font-size: 0.9rem;
+            color: var(--gray-600);
+        }
+
+        .property-date {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .property-actions {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+
+        .analysis-preview {
+            margin-top: var(--space-sm);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: var(--space-lg);
+            flex-wrap: wrap;
+        }
+
+        .selection-controls {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+        }
+
+        .section-subtitle {
+            color: var(--gray-500);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-lg);
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 500;
+            color: var(--gray-600);
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .status-online {
+            color: var(--success) !important;
+        }
+
+        /* CSV Import Modal Styles */
+        .csv-upload-area {
+            border: 2px dashed var(--gray-300);
+            border-radius: var(--border-radius-lg);
+            padding: var(--space-3xl);
+            text-align: center;
+            background: var(--gray-50);
+            transition: var(--transition);
+            margin-bottom: var(--space-lg);
+        }
+
+        .csv-upload-area:hover {
+            border-color: var(--primary);
+            background: var(--gray-100);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: var(--space-md);
+            opacity: 0.6;
+        }
+
+        .csv-format-info {
+            background: var(--gray-100);
+            padding: var(--space-lg);
+            border-radius: var(--border-radius);
+            margin-top: var(--space-lg);
+        }
+
+        .csv-format-info h5 {
+            margin-bottom: var(--space-sm);
+            color: var(--gray-700);
+        }
+
+        .csv-format-info code {
+            background: white;
+            padding: var(--space-sm);
+            border-radius: var(--border-radius);
+            font-family: 'Courier New', monospace;
+            display: block;
+            margin-bottom: var(--space-sm);
+        }
+
+        .csv-preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: var(--space-lg);
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .csv-preview-table th,
+        .csv-preview-table td {
+            padding: var(--space-sm);
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+            font-size: 0.9rem;
+        }
+
+        .csv-preview-table th {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .csv-preview-table tr:hover {
+            background: var(--gray-50);
+        }
+
+        .status-valid {
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        .csv-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .csv-stats-grid .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--gray-50);
+            border-radius: var(--border-radius);
+            border-left: 3px solid var(--primary);
+        }
+
+        .csv-stats-grid .stat-label {
+            font-weight: 500;
+            color: var(--gray-600);
+        }
+
+        .csv-stats-grid .stat-value {
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .csv-stats-grid .stat-value.error {
+            color: var(--error);
+        }
+
+        .csv-errors {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: var(--border-radius);
+            padding: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+
+        .csv-errors h5 {
+            color: var(--error);
+            margin-bottom: var(--space-md);
+        }
+
+        .csv-errors ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .csv-errors li {
+            padding: var(--space-xs) 0;
+            color: var(--error);
+            font-size: 0.9rem;
+        }
+
+        .csv-actions {
+            display: flex;
+            gap: var(--space-md);
+            justify-content: center;
+            margin-top: var(--space-lg);
+        }
+
+        .import-progress {
+            text-align: center;
+            padding: var(--space-3xl);
+        }
+
+        .import-progress p {
+            margin-top: var(--space-lg);
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        /* Modal size adjustment for CSV */
+        #csvImportModal .modal {
+            max-width: 600px;
+            width: 95%;
+        }
+
+        /* Analysis Status Badges */
+        .analysis-badge {
+            display: inline-block;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--border-radius);
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-left: var(--space-sm);
+        }
+
+        .analysis-badge.pending {
+            background: rgba(251, 191, 36, 0.1);
+            color: #d97706;
+            border: 1px solid rgba(251, 191, 36, 0.2);
+        }
+
+        .analysis-badge.processing {
+            background: rgba(59, 130, 246, 0.1);
+            color: #2563eb;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .analysis-badge.completed {
+            background: rgba(34, 197, 94, 0.1);
+            color: #059669;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .analysis-badge.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        /* Analysis Modal */
+        .analysis-modal-content h3 {
+            color: var(--primary);
+            margin-bottom: var(--space-lg);
+        }
+
+        .analysis-section {
+            margin-bottom: var(--space-lg);
+            padding: var(--space-md);
+            background: var(--gray-50);
+            border-radius: var(--border-radius);
+            border-left: 3px solid var(--primary);
+        }
+
+        .analysis-section h4 {
+            margin-bottom: var(--space-md);
+            color: var(--gray-800);
+            font-size: 1rem;
+        }
+
+        .analysis-metrics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-md);
+        }
+
+        .analysis-metrics span {
+            background: white;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            border: 1px solid var(--gray-200);
+        }
+
+        .analysis-footer {
+            margin-top: var(--space-lg);
+            padding-top: var(--space-md);
+            border-top: 1px solid var(--gray-200);
+            text-align: center;
+            color: var(--gray-500);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .property-item {
+                grid-template-columns: 1fr;
+                gap: var(--space-md);
+            }
+
+            .section-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .selection-controls {
+                justify-content: center;
+            }
+
+            .csv-stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .csv-actions {
+                flex-direction: column;
+            }
+            
+            .csv-preview-table {
+                font-size: 0.8rem;
+            }
+            
+            .csv-preview-table th,
+            .csv-preview-table td {
+                padding: var(--space-xs);
+            }
+
+            .analysis-metrics {
+                flex-direction: column;
+                gap: var(--space-sm);
+            }
+        }
+    </style>
+</body>
+</html>
