@@ -13,7 +13,7 @@ resource "aws_cognito_user_pool" "main" {
     require_uppercase = true
   }
 
-  # MFA Configuration
+  # MFA Configuration - OPCIONAL
   mfa_configuration = "OPTIONAL"
 
   software_token_mfa_configuration {
@@ -28,15 +28,15 @@ resource "aws_cognito_user_pool" "main" {
     }
   }
 
-  # Device Configuration
+  # Device Configuration - DESABILITADO temporariamente
   device_configuration {
-    challenge_required_on_new_device      = true
-    device_only_remembered_on_user_prompt = true
+    challenge_required_on_new_device      = false
+    device_only_remembered_on_user_prompt = false
   }
 
-  # User Pool Add-ons
+  # User Pool Add-ons - MODO AUDIT em vez de ENFORCED
   user_pool_add_ons {
-    advanced_security_mode = "ENFORCED"
+    advanced_security_mode = "AUDIT"
   }
 
   auto_verified_attributes = ["email"]
@@ -128,7 +128,7 @@ resource "aws_cognito_user_pool_domain" "main" {
 }
 
 # ===================================
-# RISK CONFIGURATION
+# RISK CONFIGURATION - MODO PERMISSIVO
 # ===================================
 
 resource "aws_cognito_risk_configuration" "main" {
@@ -136,7 +136,7 @@ resource "aws_cognito_risk_configuration" "main" {
 
   compromised_credentials_risk_configuration {
     actions {
-      event_action = "BLOCK"
+      event_action = "NO_ACTION" # Mudado de BLOCK para NO_ACTION
     }
   }
 }
